@@ -49,7 +49,7 @@ namespace Pandawan.Islands.Player
                 movement = Vector2.zero;
             }
 
-            
+
             // Animations
             if (anim != null)
             {

@@ -1,7 +1,25 @@
 # Tilemaps
 
+**From now on, never use the Tilemap system, just use the World Abstraction Layer or expand it.**
+
+- [Abstraction Layer](#Abstraction-Layer)
 - [Tilemap](#Tilemap)
 - [GridInformation](#GridInformation)
+
+## Abstraction Layer
+
+The World Component has an abstraction layer using Chunks for easier Tile management and Saving/Loading system.
+**From now on, never use the Tilemap system, just use the World Abstraction Layer or expand it.**
+
+### Saving
+
+To Save Chunks, you can either save each `Chunk` separately (they are currently 32x32x32), or use Regions (which are Key-Value-Pairs of Chunks within given bounds).
+
+### Loading
+
+**Loading isn't yet implemented!**
+To make loading, add a system that deserializes the objects into `Chunk` objects, then call the Load method.
+Note: The Load method might need some changes, for now it just copies its content into the Tilemap.
 
 ## Tilemap
 
