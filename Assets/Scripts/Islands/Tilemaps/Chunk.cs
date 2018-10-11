@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -39,7 +40,7 @@ namespace Pandawan.Islands.Tilemaps
                     {
                         // Check that there is a tile at this position
                         Vector3Int tilePosition = new Vector3Int(x, y, z);
-                        string tile = tilemap.GetTile(tilePosition)?.name;
+                        string tile = (tilemap.GetTile(tilePosition) as BasicTile)?.TileName;
                         if (!string.IsNullOrEmpty(tile))
                         {
                             // Add it to the tiles list
@@ -101,11 +102,11 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Get the TileBase object at the given position.
+        /// Get the BasicTile object at the given position.
         /// </summary>
         /// <param name="tilePosition">The position to get the tile at.</param>
-        /// <returns>The TileBase object.</returns>
-        public TileBase GetTile(Vector3Int tilePosition)
+        /// <returns>The BasicTile object.</returns>
+        public BasicTile GetTile(Vector3Int tilePosition)
         {
             if (!IsValidPosition(tilePosition))
             {
@@ -113,8 +114,7 @@ namespace Pandawan.Islands.Tilemaps
                 return null;
             }
 
-            // TODO: Check that the position is in the correct chunk
-            return tilemap.GetTile(tilePosition);
+            return tilemap.GetTile(tilePosition) as BasicTile;
         }
 
         /// <summary>
@@ -155,7 +155,8 @@ namespace Pandawan.Islands.Tilemaps
                 return;
             }
 
-            TileBase tile = TileDB.instance.GetTile(tileId);
+            // Get the corresponding BasicTile and call SetTile with the BasicTile
+            BasicTile tile = TileDB.instance.GetTile(tileId);
             SetTile(tilePosition, tile);
         }
 
@@ -164,9 +165,8 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position at which to set the tile.</param>
         /// <param name="tile">The Tile object to set</param>
-        public void SetTile(Vector3Int tilePosition, TileBase tile)
+        public void SetTile(Vector3Int tilePosition, BasicTile tile)
         {
-            // TODO: Update system to custom Tile instead of TileBase so I can have both id AND name
             if (!IsValidPosition(tilePosition))
             {
                 Debug.LogError($"Position {tilePosition} is not valid for Chunk at {position}");
@@ -181,7 +181,7 @@ namespace Pandawan.Islands.Tilemaps
             }
 
             // Create a TilePair for the Chunk
-            TilePair pair = new TilePair(tilePosition, tile.name);
+            TilePair pair = new TilePair(tilePosition, tile.Id);
 
             // Set the new tile in the Chunk's tiles list
             int index = tiles.FindIndex(x => x.position == tilePosition);
@@ -217,6 +217,8 @@ namespace Pandawan.Islands.Tilemaps
             {
                 tiles.RemoveAt(index);
             }
+
+            // TODO: Reset GridInformation
         }
 
         #endregion

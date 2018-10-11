@@ -625,7 +625,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tiles:
-  - {fileID: 11400000, guid: ef6ccbf221d6e3a4dad1ff97b1b47dfe, type: 2}
+  - {fileID: 11400000, guid: 9d6c3b0983be14449a68e6d503329687, type: 2}
 --- !u!4 &2068412388
 Transform:
   m_ObjectHideFlags: 0

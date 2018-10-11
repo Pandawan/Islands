@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -9,7 +10,7 @@ namespace Pandawan.Islands.Tilemaps
     {
         public static TileDB instance;
 
-        [SerializeField] private List<TileBase> tiles;
+        [SerializeField] private List<BasicTile> tiles;
 
         private void Awake()
         {
@@ -23,14 +24,14 @@ namespace Pandawan.Islands.Tilemaps
             }
         }
 
-        public TileBase GetTile(string id)
+        public BasicTile GetTile(string id)
         {
-            if (!tiles.Exists(x => x.name == id))
+            if (!tiles.Exists(x => x.Id == id))
             {
                 Debug.LogError($"Could not find a tile with id {id}");
             }
 
-            return tiles.Find(x => x.name == id);
+            return tiles.Find(x => x.Id == id);
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Pandawan.Islands.Tilemaps.Generation;
+using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -33,6 +34,8 @@ namespace Pandawan.Islands.Tilemaps
         private void Start()
         {
             worldGen.Generate(this);
+
+            GetRegion(new BoundsInt(-1,-1,-1, 2, 2,2)).Values.ToList().ForEach((x) => Debug.Log(JsonUtility.ToJson(x)));
         }
 
         /// <summary>
@@ -118,8 +121,8 @@ namespace Pandawan.Islands.Tilemaps
         /// Get the tile at the given position.
         /// </summary>
         /// <param name="position">The position to get the tile at.</param>
-        /// <returns>The TileBase object.</returns>
-        public TileBase GetTile(Vector3Int position)
+        /// <returns>The BasicTile object.</returns>
+        public BasicTile GetTile(Vector3Int position)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
             Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(position));
@@ -140,11 +143,11 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Set a tile in the world using a TileBase.
+        /// Set a tile in the world using a BasicTile.
         /// </summary>
         /// <param name="position">The position to set the tile at.</param>
-        /// <param name="tile">The TileBase object to set.</param>
-        public void SetTile(Vector3Int position, TileBase tile)
+        /// <param name="tile">The BasicTile object to set.</param>
+        public void SetTile(Vector3Int position, BasicTile tile)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
             Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(position));
