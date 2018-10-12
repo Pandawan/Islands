@@ -79,6 +79,16 @@ namespace Pandawan.Islands.Tilemaps
             return data;
         }
 
+        /// <summary>
+        /// Find all the Dirty Chunks
+        /// </summary>
+        /// <returns>A List of all Dirty Chunks</returns>
+        public List<Chunk> GetDirtyChunks()
+        {
+            // Find all the chunks that have IsDirty == true
+            return chunks.Values.ToList().FindAll(x => x.IsDirty);
+        }
+
         #endregion
 
         #region Chunk Abstraction
@@ -111,7 +121,7 @@ namespace Pandawan.Islands.Tilemaps
             if (!chunks.ContainsKey(position))
             {
                 // TODO: Check that it doesn't exist in FileSystem, if not, create empty, if it does, deserialize
-                chunks.Add(position, new Chunk(position, new List<Chunk.TilePair>(), tilemap));
+                chunks.Add(position, new Chunk(position, chunkSize, tilemap));
             }
 
             return chunks[position];
@@ -156,5 +166,6 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         #endregion
+        
     }
 }

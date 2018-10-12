@@ -14,22 +14,37 @@ namespace Pandawan.Islands.Tilemaps
     {
         public Vector3Int position;
 
-        // private GridInformation infos { get; set; }
+        // Size of a chunk
+        private Vector3Int size;
 
         // Keep a reference to the tilemap
         private Tilemap tilemap;
-        public List<TilePair> tiles;
 
-        public Chunk(Vector3Int position, List<TilePair> tiles, Tilemap tilemap)
+        // private GridInformation infos { get; set; }
+
+        public string[] tiles;
+
+        public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap)
         {
             this.position = position;
+            this.size = size;
+            tiles = new string[size.x * size.y * size.z];
+            this.tilemap = tilemap;
+            IsDirty = false;
+        }
+
+        public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap, string[] tiles)
+        {
+            this.position = position;
+            this.size = size;
             this.tiles = tiles;
             this.tilemap = tilemap;
+            IsDirty = false;
         }
 
         public Chunk(BoundsInt bounds, Tilemap tilemap, GridInformation gridInfo)
         {
-            tiles = new List<TilePair>();
+            tiles = new string[size.x * size.y * size.z];
 
             // Loop through every position in the bounds and add the tile if not empty
             for (int x = bounds.xMin; x < bounds.xMax; x++)
@@ -38,14 +53,11 @@ namespace Pandawan.Islands.Tilemaps
                 {
                     for (int z = bounds.zMin; z < bounds.zMax; z++)
                     {
-                        // Check that there is a tile at this position
+                        // Get the tile at this local position
                         Vector3Int tilePosition = new Vector3Int(x, y, z);
-                        string tile = (tilemap.GetTile(tilePosition) as BasicTile)?.TileName;
-                        if (!string.IsNullOrEmpty(tile))
-                        {
-                            // Add it to the tiles list
-                            tiles.Add(new TilePair(tilePosition, tile));
-                        }
+                        string tile = (tilemap.GetTile(tilePosition) as BasicTile)?.TileName ?? "";
+                        // Add it to the tiles list
+                        tiles[PositionToIndex(tilePosition)] = tile;
                     }
                 }
             }
@@ -54,29 +66,76 @@ namespace Pandawan.Islands.Tilemaps
             position = bounds.position;
         }
 
+        // Whether or not this Chunk is different from the saved one
+        public bool IsDirty { get; protected set; }
+
         public void Load()
         {
+            // TODO: Check that it works AND maybe convert this so actual loading is external in WorldGeneration
             // Load every tile
-            foreach (TilePair pair in tiles)
+            for (int x = 0; x < tiles.GetLength(0); x++)
             {
-                tilemap.SetTile(pair.position, TileDB.instance.GetTile(pair.id));
+                for (int y = 0; y < tiles.GetLength(1); y++)
+                {
+                    for (int z = 0; z < tiles.GetLength(2); z++)
+                    {
+                        Vector3Int tilePosition = LocalToGlobalPosition(new Vector3Int(x, y, z));
+                        string tileId = tiles[PositionToIndex(tilePosition)];
+                        tilemap.SetTile(tilePosition, TileDB.instance.GetTile(tileId));
+                    }
+                }
             }
         }
 
-        [Serializable]
-        public class TilePair
+        #region Utilities
+
+        /// <summary>
+        /// Convert a Vector3 position into a 1D array index.
+        /// </summary>
+        /// <param name="tilePosition">The position of the tile.</param>
+        /// <returns>The 1D array index</returns>
+        public int PositionToIndex(Vector3Int tilePosition)
         {
-            public string id;
-
-            public Vector3Int position;
-            // TODO: Perhaps store the GridInformation here when saving?
-
-            public TilePair(Vector3Int position, string id)
-            {
-                this.position = position;
-                this.id = id;
-            }
+            return (tilePosition.z + size.z * (tilePosition.x * size.x + tilePosition.y));
         }
+
+        /// <summary>
+        /// Convert a 1D array index into a Vector3D Position.
+        /// </summary>
+        /// <param name="index">The array index.</param>
+        /// <returns>The local Vector3 position.</returns>
+        public Vector3Int IndexToPosition(int index)
+        {
+            int z = index % size.z;
+            int y = (index / size.z) % size.y;
+            int x = index / (size.y * size.z);
+            return new Vector3Int(x, y, z);
+        }
+
+        /// <summary>
+        /// Convert a Global/World Position to a Local/Chunk Position
+        /// </summary>
+        /// <param name="globalPosition">The Global Position to convert.</param>
+        /// <returns>The converted Local Position.</returns>
+        public Vector3Int GlobalToLocalPosition(Vector3Int globalPosition)
+        {
+            // Formula to convert to local position AND invert negative tile positions (arrays can't go below 0)
+            return new Vector3Int((globalPosition.x % size.x + size.x) % size.x,
+                (globalPosition.y % size.y + size.y) % size.y, (globalPosition.z % size.z + size.z) % size.z);
+        }
+
+        /// <summary>
+        /// Convert a Local/Chunk Position to a Global/World Position
+        /// </summary>
+        /// <param name="localPosition">The Global Position to convert.</param>
+        /// <returns>The converted Local Position.</returns>
+        public Vector3Int LocalToGlobalPosition(Vector3Int localPosition)
+        {
+            return new Vector3Int(localPosition.x + position.x * size.x, localPosition.y + position.y * size.y,
+                localPosition.z + position.z * size.z);
+        }
+
+        #endregion
 
 
         #region Tile Abstraction
@@ -87,7 +146,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <returns>True if empty.</returns>
         public bool IsEmpty()
         {
-            return tiles.Count == 0;
+            return tiles.Length == 0;
         }
 
         /// <summary>
@@ -123,7 +182,7 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position to get the TilePair at.</param>
         /// <returns>The TilePair object.</returns>
-        public TilePair GetTilePair(Vector3Int tilePosition)
+        public string GetTileId(Vector3Int tilePosition)
         {
             // TODO: Probably want to remove this method because it should only be used internally...
             if (!IsValidPosition(tilePosition))
@@ -132,7 +191,9 @@ namespace Pandawan.Islands.Tilemaps
                 return null;
             }
 
-            return tiles.Find(x => x.position == tilePosition);
+            Vector3Int localPosition = GlobalToLocalPosition(tilePosition);
+
+            return tiles[PositionToIndex(localPosition)];
         }
 
         /// <summary>
@@ -180,22 +241,15 @@ namespace Pandawan.Islands.Tilemaps
                 return;
             }
 
-            // Create a TilePair for the Chunk
-            TilePair pair = new TilePair(tilePosition, tile.Id);
-
             // Set the new tile in the Chunk's tiles list
-            int index = tiles.FindIndex(x => x.position == tilePosition);
-            if (index != -1)
-            {
-                tiles[index] = pair;
-            }
-            else
-            {
-                tiles.Add(pair);
-            }
+            Vector3Int localPosition = GlobalToLocalPosition(tilePosition);
+            tiles[PositionToIndex(localPosition)] = tile.Id;
 
             // Set the new tile in the Tilemap
             tilemap.SetTile(tilePosition, tile);
+
+            // Set the Chunk as Dirty
+            IsDirty = true;
 
             // TODO: Don't forget to reset the GridInformation
         }
@@ -212,11 +266,10 @@ namespace Pandawan.Islands.Tilemaps
                 return;
             }
 
-            int index = tiles.FindIndex(x => x.position == tilePosition);
-            if (index != -1)
-            {
-                tiles.RemoveAt(index);
-            }
+            Vector3Int localPosition = GlobalToLocalPosition(tilePosition);
+            tiles[PositionToIndex(localPosition)] = "";
+
+            IsDirty = true;
 
             // TODO: Reset GridInformation
         }

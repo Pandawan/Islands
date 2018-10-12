@@ -44,12 +44,18 @@ namespace Pandawan.Islands.Tilemaps.Tiles
 
         [SerializeField]
         private Tile.ColliderType m_ColliderType = Tile.ColliderType.None;
-
-
+        
         public Tile.ColliderType ColliderType
         {
             get { return m_ColliderType; }
             set { m_ColliderType = value; }
+        }
+
+        public override void GetTileData(Vector3Int location, ITilemap tilemap, ref TileData tileData)
+        {
+            tileData.sprite = this.Sprite;
+            tileData.color = this.Color;
+            tileData.colliderType = this.ColliderType;
         }
     }
 }
