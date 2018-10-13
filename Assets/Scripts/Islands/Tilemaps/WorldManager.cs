@@ -8,6 +8,7 @@ using Pandawan.Islands.Other;
 using Pandawan.Islands.Serialization;
 using UnityEngine;
 
+// TODO: Might want to move this to a different namespace?
 namespace Pandawan.Islands.Tilemaps
 {
     public static class WorldManager
@@ -73,7 +74,8 @@ namespace Pandawan.Islands.Tilemaps
 
             // Add all the surrogates to convert non-serializable to serializable
             Vector3IntSerializationSurrogate vector3IntSurrogate = new Vector3IntSerializationSurrogate();
-            surrogateSelector.AddSurrogate(typeof(Vector3Int), new StreamingContext(StreamingContextStates.All), vector3IntSurrogate);
+            surrogateSelector.AddSurrogate(typeof(Vector3Int), new StreamingContext(StreamingContextStates.All),
+                vector3IntSurrogate);
 
             // Apply SurrogateSelector
             formatter.SurrogateSelector = surrogateSelector;

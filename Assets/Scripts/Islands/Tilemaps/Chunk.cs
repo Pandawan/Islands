@@ -12,6 +12,8 @@ namespace Pandawan.Islands.Tilemaps
     [Serializable]
     public class Chunk
     {
+        // Actual saved tiles
+        [SerializeField] private string[] tiles;
         // private GridInformation infos { get; set; }
 
         [SerializeField] public Vector3Int position;
@@ -21,9 +23,6 @@ namespace Pandawan.Islands.Tilemaps
 
         // Keep a reference to the tilemap
         [NonSerialized] private Tilemap tilemap;
-
-        // Actual saved tiles
-        [SerializeField] private string[] tiles;
 
 
         public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap)
@@ -88,7 +87,22 @@ namespace Pandawan.Islands.Tilemaps
                 }
             }
         }
-        
+
+        /// <summary>
+        /// Get the Chunk Id.
+        /// This is a FileSystem-safe id in snake_case.
+        /// </summary>
+        /// <returns>The chunk's id.</returns>
+        public string GetId()
+        {
+            return $"chunk_{position.x}_{position.y}_{position.z}";
+        }
+
+        public override string ToString()
+        {
+            return $"Chunk {position.ToString()}";
+        }
+
         #region Utilities
 
         /// <summary>
@@ -138,7 +152,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         #endregion
-        
+
         #region Tile Abstraction
 
         /// <summary>
@@ -276,15 +290,5 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         #endregion
-
-        public override string ToString()
-        {
-            return $"Chunk {position.ToString()}";
-        }
-
-        public string GetId()
-        {
-            return $"chunk_{position.x}_{position.y}_{position.z}";
-        }
     }
 }

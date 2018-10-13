@@ -48,6 +48,21 @@ namespace Pandawan.Islands.Tilemaps
             return gridInfo;
         }
 
+        /// <summary>
+        /// Get the World Id.
+        /// This is a FileSystem-safe id in snake_case.
+        /// </summary>
+        /// <returns>The world's id.</returns>
+        public string GetId()
+        {
+            return Utilities.RemoveIllegalFileCharacters(worldName.ToLower().Replace(" ", "_"));
+        }
+
+        public override string ToString()
+        {
+            return $"World {worldName}";
+        }
+
         #region Regions
 
         /// <summary>
@@ -167,15 +182,5 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         #endregion
-        
-        public string GetId()
-        {
-            return Utilities.RemoveIllegalFileCharacters(worldName.ToLower().Replace(" ", "_"));
-        }
-
-        public override string ToString()
-        {
-            return $"World {worldName}";
-        }
     }
 }
