@@ -14,6 +14,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
 
         public void Generate(World world)
         {
+            // TODO: Find a seed system so that auto-generated tiles aren't saved by the world? Or perhaps something like, replace if empty? Idk...
             switch (type)
             {
                 case GenerationType.Circle:

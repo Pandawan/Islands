@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace Pandawan.Islands.Tilemaps
     {
         public static World instance;
 
-        [SerializeField] private string worldName;
+        [SerializeField] private WorldInfo worldInfo;
         [SerializeField] private Vector3Int chunkSize;
         [SerializeField] private Tilemap tilemap;
         [SerializeField] private GridInformation gridInfo;
@@ -35,32 +36,41 @@ namespace Pandawan.Islands.Tilemaps
 
         private void Start()
         {
-            worldGen.Generate(this);
-            WorldManager.Save(this);
+            WorldManager.Load(worldInfo.GetId(), this);
+            // worldGen.Generate(this);
+            // WorldManager.Save(this);
         }
 
         /// <summary>
-        /// Get the GridInformation to store TileData
+        /// Get the GridInformation to store TileData.
         /// </summary>
-        /// <returns>GridInformation component</returns>
+        /// <returns>GridInformation component.</returns>
         public GridInformation GetGridInformation()
         {
             return gridInfo;
         }
 
         /// <summary>
-        /// Get the World Id.
-        /// This is a FileSystem-safe id in snake_case.
+        /// Set the World's WorldInfo.
         /// </summary>
-        /// <returns>The world's id.</returns>
-        public string GetId()
+        /// <param name="info">WorldInfo object to set to.</param>
+        public void SetWorldInfo(WorldInfo info)
         {
-            return Utilities.RemoveIllegalFileCharacters(worldName.ToLower().Replace(" ", "_"));
+            worldInfo = info;
+        }
+
+        /// <summary>
+        /// Get the World's WorldInfo.
+        /// </summary>
+        /// <returns>The World Info object.</returns>
+        public WorldInfo GetWorldInfo()
+        {
+            return worldInfo;
         }
 
         public override string ToString()
         {
-            return $"World {worldName}";
+            return $"World {worldInfo.name}";
         }
 
         #region Regions
@@ -94,6 +104,22 @@ namespace Pandawan.Islands.Tilemaps
 
             return data;
         }
+
+        /// <summary>
+        /// Loads every chunk in the given list into the world.
+        /// </summary>
+        /// <param name="chunksToLoad">The list of chunks to load.</param>
+        public void LoadChunks(List<Chunk> chunksToLoad)
+        {
+            foreach (Chunk chunk in chunksToLoad)
+            {
+                // Load & Setup the chunk
+                chunks.Add(chunk.position, chunk);
+                chunk.Setup(chunkSize, tilemap);
+                chunk.Load();
+            }
+        }
+
 
         /// <summary>
         /// Find all the Dirty Chunks
@@ -182,5 +208,21 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         #endregion
+    }
+
+    [Serializable]
+    public struct WorldInfo
+    {
+        [SerializeField] public string name;
+
+        /// <summary>
+        /// Get the World Id.
+        /// This is a FileSystem-safe id in snake_case.
+        /// </summary>
+        /// <returns>The world's id.</returns>
+        public string GetId()
+        {
+            return Utilities.RemoveIllegalFileCharacters(name.ToLower().Replace(" ", "_"));
+        }
     }
 }
