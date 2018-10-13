@@ -1,11 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace Pandawan.Islands.Other
 {
     public static class Utilities
     {
+        public static string RemoveIllegalFileCharacters(string original)
+        {
+            Regex illegalInFileName = new Regex(@"[\\/:*?""<>|]");
+            return illegalInFileName.Replace(original, "");
+        }
+
         /// <summary>
         /// Whether or not the given Vector3 object is empty
         /// </summary>

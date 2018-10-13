@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Pandawan.Islands.Other;
 using Pandawan.Islands.Tilemaps.Generation;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
@@ -12,6 +13,7 @@ namespace Pandawan.Islands.Tilemaps
     {
         public static World instance;
 
+        [SerializeField] private string worldName;
         [SerializeField] private Vector3Int chunkSize;
         [SerializeField] private Tilemap tilemap;
         [SerializeField] private GridInformation gridInfo;
@@ -34,8 +36,7 @@ namespace Pandawan.Islands.Tilemaps
         private void Start()
         {
             worldGen.Generate(this);
-
-            GetRegion(new BoundsInt(-1,-1,-1, 2, 2,2)).Values.ToList().ForEach((x) => Debug.Log(JsonUtility.ToJson(x)));
+            WorldManager.Save(this);
         }
 
         /// <summary>
@@ -167,5 +168,14 @@ namespace Pandawan.Islands.Tilemaps
 
         #endregion
         
+        public string GetId()
+        {
+            return Utilities.RemoveIllegalFileCharacters(worldName.ToLower().Replace(" ", "_"));
+        }
+
+        public override string ToString()
+        {
+            return $"World {worldName}";
+        }
     }
 }

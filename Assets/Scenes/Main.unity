@@ -233,7 +233,6 @@ GameObject:
   - component: {fileID: 948457040}
   - component: {fileID: 948457039}
   - component: {fileID: 948457038}
-  - component: {fileID: 948457041}
   - component: {fileID: 948457037}
   m_Layer: 0
   m_Name: Grid
@@ -253,10 +252,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ee2507a8f628d949b5b42208787e47f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  worldName: World
   chunkSize: {x: 32, y: 32, z: 32}
   tilemap: {fileID: 1171127332}
   gridInfo: {fileID: 948457038}
-  worldGen: {fileID: 948457041}
+  worldGen:
+    type: 1
+    islandSize:
+      m_Position: {x: -8, y: -8, z: 0}
+      m_Size: {x: 16, y: 16, z: 4}
 --- !u!114 &948457038
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -305,21 +309,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &948457041
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 948457036}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a41b7b9def867214a8c45062964d8e5d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  type: 1
-  islandSize:
-    m_Position: {x: -8, y: -8, z: 0}
-    m_Size: {x: 16, y: 16, z: 4}
 --- !u!1 &1171127331
 GameObject:
   m_ObjectHideFlags: 0

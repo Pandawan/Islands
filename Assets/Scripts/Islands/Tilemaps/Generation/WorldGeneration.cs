@@ -6,7 +6,8 @@ using UnityEngine.Tilemaps;
 
 namespace Pandawan.Islands.Tilemaps.Generation
 {
-    public class WorldGeneration : MonoBehaviour
+    [Serializable]
+    public class WorldGeneration
     {
         [SerializeField] private GenerationType type;
         [SerializeField] private BoundsInt islandSize;
