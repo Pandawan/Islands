@@ -232,7 +232,6 @@ GameObject:
   m_Component:
   - component: {fileID: 948457040}
   - component: {fileID: 948457039}
-  - component: {fileID: 948457038}
   - component: {fileID: 948457037}
   m_Layer: 0
   m_Name: Grid
@@ -252,38 +251,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ee2507a8f628d949b5b42208787e47f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  worldName: World
+  worldInfo:
+    name: world
   chunkSize: {x: 32, y: 32, z: 32}
   tilemap: {fileID: 1171127332}
-  gridInfo: {fileID: 948457038}
   worldGen:
     type: 1
     islandSize:
       m_Position: {x: -8, y: -8, z: 0}
       m_Size: {x: 16, y: 16, z: 4}
---- !u!114 &948457038
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 948457036}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4b64c5c9a7f538b40a276c89886f4236, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_PositionIntKeys: []
-  m_PositionIntValues: 
-  m_PositionStringKeys: []
-  m_PositionStringValues: []
-  m_PositionFloatKeys: []
-  m_PositionFloatValues: []
-  m_PositionDoubleKeys: []
-  m_PositionDoubleValues: []
-  m_PositionObjectKeys: []
-  m_PositionObjectValues: []
-  m_PositionColorKeys: []
-  m_PositionColorValues: []
 --- !u!156049354 &948457039
 Grid:
   m_ObjectHideFlags: 0

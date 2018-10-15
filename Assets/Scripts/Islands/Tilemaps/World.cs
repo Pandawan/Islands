@@ -15,10 +15,9 @@ namespace Pandawan.Islands.Tilemaps
         public static World instance;
 
         [SerializeField] private WorldInfo worldInfo;
+        [SerializeField] private WorldGeneration worldGen;
         [SerializeField] private Vector3Int chunkSize;
         [SerializeField] private Tilemap tilemap;
-        [SerializeField] private GridInformation gridInfo;
-        [SerializeField] private WorldGeneration worldGen;
 
         private Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
 
@@ -36,18 +35,20 @@ namespace Pandawan.Islands.Tilemaps
 
         private void Start()
         {
-            WorldManager.Load(worldInfo.GetId(), this);
-            // worldGen.Generate(this);
-            // WorldManager.Save(this);
-        }
+            // Test WorldGeneration and Save/Load
+            if (WorldManager.WorldExists(worldInfo.GetId()))
+            {
+                WorldManager.Load(worldInfo.GetId(), this);
+            }
+            else
+            {
+                worldGen.Generate(this);
+            }
 
-        /// <summary>
-        /// Get the GridInformation to store TileData.
-        /// </summary>
-        /// <returns>GridInformation component.</returns>
-        public GridInformation GetGridInformation()
-        {
-            return gridInfo;
+            WorldManager.Save(this);
+
+            // Test ChunkData
+            Debug.Log(GetChunkDataForTile(Vector3Int.zero).GetPositionProperty(Vector3Int.zero, "test", "aaa"));
         }
 
         /// <summary>
@@ -167,6 +168,31 @@ namespace Pandawan.Islands.Tilemaps
             }
 
             return chunks[position];
+        }
+
+        /// <summary>
+        /// Get the ChunkData object for the given chunk position.
+        /// </summary>
+        /// <param name="position">The Chunk position.</param>
+        /// <returns>The ChunkData object.</returns>
+        public ChunkData GetChunkData(Vector3Int position)
+        {
+            // If it doesn't exist
+            if (!chunks.ContainsKey(position))
+            {
+                Debug.LogError($"No Chunk found at position {position}.");
+            }
+            return chunks[position].GetChunkData();
+        }
+
+        /// <summary>
+        /// Helper to get the ChunkData object for the Chunk that contains the given tile position.
+        /// </summary>
+        /// <param name="tilePosition">The Tile position to use.</param>
+        /// <returns>The ChunkData object.</returns>
+        public ChunkData GetChunkDataForTile(Vector3Int tilePosition)
+        {
+            return GetChunkData(GetChunkPositionForTile(tilePosition));
         }
 
         /// <summary>

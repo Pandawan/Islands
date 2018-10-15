@@ -28,6 +28,8 @@ namespace Pandawan.Islands.Tilemaps.Generation
                     SquareGeneration(world);
                     break;
             }
+
+            world.GetChunkDataForTile(Vector3Int.zero).SetPositionProperty(Vector3Int.zero, "test", "123");
         }
 
         private void SquareGeneration(World world)

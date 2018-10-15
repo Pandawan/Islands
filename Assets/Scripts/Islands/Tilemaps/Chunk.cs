@@ -15,8 +15,11 @@ namespace Pandawan.Islands.Tilemaps
     {
         // Actual saved tiles
         [SerializeField] private string[] tiles;
-        // private GridInformation infos { get; set; }
 
+        // Used to save anything dynamic/runtime in the chunk
+        [SerializeField] private ChunkData chunkData;
+
+        // The Chunk's actual position
         [SerializeField] public Vector3Int position;
 
         // Size of a chunk
@@ -24,27 +27,31 @@ namespace Pandawan.Islands.Tilemaps
 
         // Keep a reference to the tilemap
         [NonSerialized] private Tilemap tilemap;
-
+        
+        // Whether or not this Chunk is different from the saved one
+        public bool IsDirty { get; protected set; }
 
         public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap)
         {
+            tiles = new string[size.x * size.y * size.z];
+            this.chunkData = new ChunkData();
             this.position = position;
             this.size = size;
-            tiles = new string[size.x * size.y * size.z];
             this.tilemap = tilemap;
             IsDirty = false;
         }
 
         public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap, string[] tiles)
         {
+            this.tiles = tiles;
+            this.chunkData = new ChunkData();
             this.position = position;
             this.size = size;
-            this.tiles = tiles;
             this.tilemap = tilemap;
             IsDirty = false;
         }
 
-        public Chunk(BoundsInt bounds, Tilemap tilemap, GridInformation gridInfo)
+        public Chunk(BoundsInt bounds, Tilemap tilemap, ChunkData gridInfo)
         {
             tiles = new string[size.x * size.y * size.z];
 
@@ -68,9 +75,6 @@ namespace Pandawan.Islands.Tilemaps
             position = bounds.position;
         }
 
-        // Whether or not this Chunk is different from the saved one
-        public bool IsDirty { get; protected set; }
-
         /// <summary>
         /// Setup private fields if Chunk was created through serialization.
         /// </summary>
@@ -85,11 +89,18 @@ namespace Pandawan.Islands.Tilemaps
             {
                 tiles = new string[size.x * size.y * size.z];
             }
+            // If ChunkData doesn't exist, create it
+            if (chunkData == null)
+            {
+                chunkData = new ChunkData();
+            }
         }
 
+        /// <summary>
+        /// Loads the current tiles array into the tilemap.
+        /// </summary>
         public void Load()
         {
-            // TODO: Check that it works AND maybe convert this so actual loading is external in WorldGeneration
             // Keep a list of tiles/positions to push to the tilemap later
             Dictionary<Vector3Int, TileBase> tilesToAdd = new Dictionary<Vector3Int, TileBase>();
 
@@ -100,7 +111,6 @@ namespace Pandawan.Islands.Tilemaps
                 string tileId = tiles[index];
                 if (!string.IsNullOrEmpty(tileId))
                 {
-                    // TODO: Might want some tiledb key/value caching? Idk
                     // Add that tile
                     tilesToAdd.Add(tilePosition, TileDB.instance.GetTile(tileId));
                 }
@@ -108,6 +118,15 @@ namespace Pandawan.Islands.Tilemaps
 
             // Set all of the tiles that aren't empty in the tilemap
             tilemap.SetTiles(tilesToAdd.Keys.ToArray(), tilesToAdd.Values.ToArray());
+        }
+
+        /// <summary>
+        /// Get the ChunkData object.
+        /// </summary>
+        /// <returns></returns>
+        public ChunkData GetChunkData()
+        {
+            return chunkData;
         }
 
         /// <summary>
@@ -219,9 +238,8 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position to get the TilePair at.</param>
         /// <returns>The TilePair object.</returns>
-        public string GetTileId(Vector3Int tilePosition)
+        private string GetTileId(Vector3Int tilePosition)
         {
-            // TODO: Probably want to remove this method because it should only be used internally...
             if (!IsValidPosition(tilePosition))
             {
                 Debug.LogError($"Position {tilePosition} is not valid for Chunk at {position}");

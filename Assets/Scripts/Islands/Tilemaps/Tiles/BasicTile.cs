@@ -50,7 +50,7 @@ namespace Pandawan.Islands.Tilemaps.Tiles
             get { return m_ColliderType; }
             set { m_ColliderType = value; }
         }
-
+        
         public override void GetTileData(Vector3Int location, ITilemap tilemap, ref TileData tileData)
         {
             tileData.sprite = this.Sprite;

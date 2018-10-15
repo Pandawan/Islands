@@ -13,6 +13,7 @@ namespace Pandawan.Islands.Tilemaps
 {
     public static class WorldManager
     {
+        // TODO: Standardize the error messages
         // TODO: Find a way to make this work on separate threads
         /// <summary>
         /// Save the given world to the file system.
@@ -39,10 +40,18 @@ namespace Pandawan.Islands.Tilemaps
             IFormatter formatter = GetBinaryFormatter();
 
             // Save the world info
-            using (Stream stream =
-                new FileStream(Path.Combine(savePath, "world.dat"), FileMode.Create, FileAccess.ReadWrite))
+            string worldInfoPath = Path.Combine(savePath, "world.dat");
+            try
             {
-                formatter.Serialize(stream, world.GetWorldInfo());
+                using (Stream stream =
+                    new FileStream(worldInfoPath, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    formatter.Serialize(stream, world.GetWorldInfo());
+                }
+            }
+            catch (IOException e)
+            {
+                Debug.LogError($"Error while saving WorldInfo for {world} at \"{worldInfoPath}\". {e}");
             }
 
             // Save all the chunk data
@@ -60,7 +69,7 @@ namespace Pandawan.Islands.Tilemaps
                 }
                 catch (IOException e)
                 {
-                    Debug.LogError($"Error while saving {chunk} at \"{chunkPath}\". {e}");
+                    Debug.LogError($"Error while saving {chunk} for {world} at \"{chunkPath}\". {e}");
                 }
             }
 
@@ -79,16 +88,18 @@ namespace Pandawan.Islands.Tilemaps
             // Check that the World's Directory/Save exists
             if (!Directory.Exists(savePath))
             {
-                Debug.LogError($"Could not load world at \"{savePath}\". It does not exist.");
+                Debug.LogError($"Could not load world {world} at \"{savePath}\". It does not exist.");
+                return;
             }
 
             IFormatter formatter = GetBinaryFormatter();
 
             // Read the WorldInfo file
+            string worldInfoPath = Path.Combine(savePath, "world.dat");
             try
             {
                 using (Stream stream =
-                    new FileStream(Path.Combine(savePath, "world.dat"), FileMode.Open, FileAccess.Read))
+                    new FileStream(worldInfoPath, FileMode.Open, FileAccess.Read))
                 {
                     WorldInfo info = (WorldInfo) formatter.Deserialize(stream);
                     world.SetWorldInfo(info);
@@ -97,7 +108,8 @@ namespace Pandawan.Islands.Tilemaps
             }
             catch (IOException e)
             {
-                Debug.LogError($"Error while loading {world}. {e}");
+                Debug.LogError($"Error while loading WorldInfo for {world} at {worldInfoPath}. {e}");
+                return;
             }
 
             string chunksPath = Path.Combine(savePath, "chunks");
@@ -120,12 +132,23 @@ namespace Pandawan.Islands.Tilemaps
                     }
                     catch (IOException e)
                     {
-                        Debug.LogError($"Error while loading chunk at \"{chunkPath}\". {e}");
+                        Debug.LogError($"Error while loading chunk for {world} at \"{chunkPath}\". {e}");
                     }
                 }
 
                 world.LoadChunks(chunks);
             }
+        }
+
+        /// <summary>
+        /// Whether or not there exists a World with the given Id
+        /// </summary>
+        /// <param name="worldId">The World Id to search for</param>
+        /// <returns>True if it exists</returns>
+        public static bool WorldExists(string worldId)
+        {
+            string savePath = GetWorldSavePath(worldId);
+            return Directory.Exists(savePath);
         }
 
         #region Helper
