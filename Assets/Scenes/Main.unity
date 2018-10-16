@@ -253,13 +253,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   worldInfo:
     name: world
-  chunkSize: {x: 32, y: 32, z: 32}
-  tilemap: {fileID: 1171127332}
   worldGen:
     type: 1
     islandSize:
       m_Position: {x: -8, y: -8, z: 0}
       m_Size: {x: 16, y: 16, z: 4}
+  chunkSize: {x: 32, y: 32, z: 32}
+  tilemap: {fileID: 1171127332}
 --- !u!156049354 &948457039
 Grid:
   m_ObjectHideFlags: 0
@@ -591,6 +591,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tiles:
   - {fileID: 11400000, guid: 9d6c3b0983be14449a68e6d503329687, type: 2}
+  - {fileID: 11400000, guid: f3704dbc213698342aa515056e4bb4f5, type: 2}
 --- !u!4 &2068412388
 Transform:
   m_ObjectHideFlags: 0

@@ -14,6 +14,9 @@ namespace Pandawan.Islands.Tilemaps.Generation
 
         public void Generate(World world)
         {
+            // Generate water everywhere around
+            WaterGeneration(world);
+
             // TODO: Find a seed system so that auto-generated tiles aren't saved by the world? Or perhaps something like, replace if empty? Idk...
             switch (type)
             {
@@ -38,7 +41,11 @@ namespace Pandawan.Islands.Tilemaps.Generation
             {
                 for (int y = islandSize.yMin; y < islandSize.yMax; y++)
                 {
-                    world.SetTile(new Vector3Int(x, y, 0), "grass");
+                    Vector3Int position = new Vector3Int(x, y, 0);
+                    if (world.IsEmptyTile(position))
+                    {
+                        world.SetTile(position, "grass");
+                    }
                 }
             }
         }
@@ -52,7 +59,11 @@ namespace Pandawan.Islands.Tilemaps.Generation
                     if ((x != islandSize.xMin && x != islandSize.xMax - 1) ||
                         (y != islandSize.yMin && y != islandSize.yMax - 1))
                     {
-                        world.SetTile(new Vector3Int(x, y, 0), "grass");
+                        Vector3Int position = new Vector3Int(x, y, 0);
+                        if (world.IsEmptyTile(position))
+                        {
+                            world.SetTile(position, "grass");
+                        }
                     }
                 }
             }
@@ -61,6 +72,21 @@ namespace Pandawan.Islands.Tilemaps.Generation
         private void CircleGeneration(World world)
         {
             throw new NotImplementedException();
+        }
+
+        private void WaterGeneration(World world)
+        {
+            for (int x = islandSize.xMin - islandSize.size.x; x < islandSize.xMax + islandSize.size.x; x++)
+            {
+                for (int y = islandSize.yMin - islandSize.size.y; y < islandSize.yMax + islandSize.size.y; y++)
+                {
+                    Vector3Int position = new Vector3Int(x, y, 0);
+                    if (world.IsEmptyTile(position))
+                    {
+                        world.SetTile(position, "water");
+                    }
+                }
+            }
         }
 
         private enum GenerationType

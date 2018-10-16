@@ -5,6 +5,7 @@ using System.Linq;
 using Pandawan.Islands.Other;
 using Pandawan.Islands.Tilemaps.Generation;
 using Pandawan.Islands.Tilemaps.Tiles;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -35,16 +36,16 @@ namespace Pandawan.Islands.Tilemaps
 
         private void Start()
         {
-            // Test WorldGeneration and Save/Load
+            // Load previous world save if exists
             if (WorldManager.WorldExists(worldInfo.GetId()))
             {
                 WorldManager.Load(worldInfo.GetId(), this);
             }
-            else
-            {
-                worldGen.Generate(this);
-            }
 
+            // Initiate World Generation
+            worldGen.Generate(this);
+
+            // Save the newly generated world
             WorldManager.Save(this);
 
             // Test ChunkData
@@ -182,6 +183,7 @@ namespace Pandawan.Islands.Tilemaps
             {
                 Debug.LogError($"No Chunk found at position {position}.");
             }
+
             return chunks[position].GetChunkData();
         }
 
@@ -193,6 +195,18 @@ namespace Pandawan.Islands.Tilemaps
         public ChunkData GetChunkDataForTile(Vector3Int tilePosition)
         {
             return GetChunkData(GetChunkPositionForTile(tilePosition));
+        }
+        
+        /// <summary>
+        /// Whether or not the given tile position is empty/has no tile.
+        /// </summary>
+        /// <param name="position">The position to check for.</param>
+        /// <returns>True if there is no tile at the given position.</returns>
+        public bool IsEmptyTile(Vector3Int position)
+        {
+            // If the Tile doesn't exist OR its value is empty
+            return GetTile(position) == null ||
+                   string.IsNullOrEmpty(GetTile(position).Id);
         }
 
         /// <summary>
