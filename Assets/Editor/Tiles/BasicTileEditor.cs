@@ -73,14 +73,14 @@ namespace Pandawan.Islands.Editor
         // Allow for reflection to call methods?
         private static Type GetType(string TypeName)
         {
-            var type = Type.GetType(TypeName);
+            Type type = Type.GetType(TypeName);
             if (type != null)
                 return type;
 
             if (TypeName.Contains("."))
             {
-                var assemblyName = TypeName.Substring(0, TypeName.IndexOf('.'));
-                var assembly = Assembly.Load(assemblyName);
+                string assemblyName = TypeName.Substring(0, TypeName.IndexOf('.'));
+                Assembly assembly = Assembly.Load(assemblyName);
                 if (assembly == null)
                     return null;
                 type = assembly.GetType(TypeName);
@@ -88,11 +88,11 @@ namespace Pandawan.Islands.Editor
                     return type;
             }
 
-            var currentAssembly = Assembly.GetExecutingAssembly();
-            var referencedAssemblies = currentAssembly.GetReferencedAssemblies();
-            foreach (var assemblyName in referencedAssemblies)
+            Assembly currentAssembly = Assembly.GetExecutingAssembly();
+            AssemblyName[] referencedAssemblies = currentAssembly.GetReferencedAssemblies();
+            foreach (AssemblyName assemblyName in referencedAssemblies)
             {
-                var assembly = Assembly.Load(assemblyName);
+                Assembly assembly = Assembly.Load(assemblyName);
                 if (assembly != null)
                 {
                     type = assembly.GetType(TypeName);
@@ -118,14 +118,12 @@ namespace Pandawan.Islands.Editor
         public override void OnPreviewGUI(Rect rect, GUIStyle backgroundStyle)
         {
             if (Event.current.type == EventType.Repaint)
-            {
                 if (Target.Sprite != null && Target.Sprite.texture != null)
                 {
                     Texture2D texture = Target.Sprite.texture;
                     GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit, true,
-                        ((float) texture.width / texture.height), Target.Color, Vector4.zero, 0);
+                        (float) texture.width / texture.height, Target.Color, Vector4.zero, 0);
                 }
-            }
         }
 
         // Set the title of the Preview

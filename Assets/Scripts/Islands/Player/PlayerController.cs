@@ -1,24 +1,22 @@
-using System.Collections;
-using System.Collections.Generic;
 using Pandawan.Islands.Other;
 using UnityEngine;
 
 namespace Pandawan.Islands.Player
 {
     /// <summary>
-    /// Manages player movement and its animations
+    ///     Manages player movement and its animations
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Animator))]
     public class PlayerController : MonoBehaviour
     {
         /// <summary>
-        /// The speed at which the player moves
+        ///     The speed at which the player moves
         /// </summary>
         [SerializeField] private float speed = 5f;
 
         /// <summary>
-        /// Whether or not the player should be allowed to move
+        ///     Whether or not the player should be allowed to move
         /// </summary>
         [SerializeField] private bool allowMovement = true;
 
@@ -41,13 +39,9 @@ namespace Pandawan.Islands.Player
         {
             // Do Movement/Input in Update for more accurate results
             if (allowMovement)
-            {
                 Move();
-            }
             else
-            {
                 movement = Vector2.zero;
-            }
 
 
             // Animations
@@ -69,7 +63,7 @@ namespace Pandawan.Islands.Player
         }
 
         /// <summary>
-        /// Get Input Axis and assign them to vector to be used for movement
+        ///     Get Input Axis and assign them to vector to be used for movement
         /// </summary>
         private void Move()
         {
@@ -78,10 +72,7 @@ namespace Pandawan.Islands.Player
             // Clamp it so you don't go faster when pressing two keys at once
             movement = Vector2.ClampMagnitude(movement, 1);
 
-            if (!Utilities.IsEmpty(movement))
-            {
-                lastFacingDirection = movement;
-            }
+            if (!Utilities.IsEmpty(movement)) lastFacingDirection = movement;
         }
 
         public Vector2 GetFacingDirection()

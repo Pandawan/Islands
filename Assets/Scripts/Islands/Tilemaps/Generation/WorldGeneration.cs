@@ -1,8 +1,5 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 
 namespace Pandawan.Islands.Tilemaps.Generation
 {
@@ -38,35 +35,23 @@ namespace Pandawan.Islands.Tilemaps.Generation
         private void SquareGeneration(World world)
         {
             for (int x = islandSize.xMin; x < islandSize.xMax; x++)
+            for (int y = islandSize.yMin; y < islandSize.yMax; y++)
             {
-                for (int y = islandSize.yMin; y < islandSize.yMax; y++)
-                {
-                    Vector3Int position = new Vector3Int(x, y, 0);
-                    if (world.IsEmptyTile(position))
-                    {
-                        world.SetTile(position, "grass");
-                    }
-                }
+                Vector3Int position = new Vector3Int(x, y, 0);
+                if (world.IsEmptyTile(position)) world.SetTile(position, "grass");
             }
         }
 
         private void SquareNoBordersGeneration(World world)
         {
             for (int x = islandSize.xMin; x < islandSize.xMax; x++)
-            {
-                for (int y = islandSize.yMin; y < islandSize.yMax; y++)
+            for (int y = islandSize.yMin; y < islandSize.yMax; y++)
+                if (x != islandSize.xMin && x != islandSize.xMax - 1 ||
+                    y != islandSize.yMin && y != islandSize.yMax - 1)
                 {
-                    if ((x != islandSize.xMin && x != islandSize.xMax - 1) ||
-                        (y != islandSize.yMin && y != islandSize.yMax - 1))
-                    {
-                        Vector3Int position = new Vector3Int(x, y, 0);
-                        if (world.IsEmptyTile(position))
-                        {
-                            world.SetTile(position, "grass");
-                        }
-                    }
+                    Vector3Int position = new Vector3Int(x, y, 0);
+                    if (world.IsEmptyTile(position)) world.SetTile(position, "grass");
                 }
-            }
         }
 
         private void CircleGeneration(World world)
@@ -77,15 +62,10 @@ namespace Pandawan.Islands.Tilemaps.Generation
         private void WaterGeneration(World world)
         {
             for (int x = islandSize.xMin - islandSize.size.x; x < islandSize.xMax + islandSize.size.x; x++)
+            for (int y = islandSize.yMin - islandSize.size.y; y < islandSize.yMax + islandSize.size.y; y++)
             {
-                for (int y = islandSize.yMin - islandSize.size.y; y < islandSize.yMax + islandSize.size.y; y++)
-                {
-                    Vector3Int position = new Vector3Int(x, y, 0);
-                    if (world.IsEmptyTile(position))
-                    {
-                        world.SetTile(position, "water");
-                    }
-                }
+                Vector3Int position = new Vector3Int(x, y, 0);
+                if (world.IsEmptyTile(position)) world.SetTile(position, "water");
             }
         }
 

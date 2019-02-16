@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
@@ -16,7 +14,7 @@ namespace Pandawan.Islands.Tilemaps
         // TODO: Standardize the error messages
         // TODO: Find a way to make this work on separate threads
         /// <summary>
-        /// Save the given world to the file system.
+        ///     Save the given world to the file system.
         /// </summary>
         /// <param name="world">The world to save.</param>
         public static void Save(World world)
@@ -77,7 +75,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Load a world with the specified world id.
+        ///     Load a world with the specified world id.
         /// </summary>
         /// <param name="worldId">The world id to look for.</param>
         /// <param name="world">The world to apply the changes to.</param>
@@ -122,7 +120,6 @@ namespace Pandawan.Islands.Tilemaps
                 // Get all file names in the chunks directory
                 string[] chunkPaths = Directory.GetFiles(chunksPath);
                 foreach (string chunkPath in chunkPaths)
-                {
                     try
                     {
                         using (Stream stream = new FileStream(chunkPath, FileMode.Open, FileAccess.Read))
@@ -134,14 +131,13 @@ namespace Pandawan.Islands.Tilemaps
                     {
                         Debug.LogError($"Error while loading chunk for {world} at \"{chunkPath}\". {e}");
                     }
-                }
 
                 world.LoadChunks(chunks);
             }
         }
 
         /// <summary>
-        /// Whether or not there exists a World with the given Id
+        ///     Whether or not there exists a World with the given Id
         /// </summary>
         /// <param name="worldId">The World Id to search for</param>
         /// <returns>True if it exists</returns>
@@ -154,7 +150,7 @@ namespace Pandawan.Islands.Tilemaps
         #region Helper
 
         /// <summary>
-        /// Get a Binary Formatter that is customized to serialize World data.
+        ///     Get a Binary Formatter that is customized to serialize World data.
         /// </summary>
         /// <returns>The Binary Formatter object.</returns>
         private static BinaryFormatter GetBinaryFormatter()
@@ -177,7 +173,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Get the path to the Saves directory where world saves are stored.
+        ///     Get the path to the Saves directory where world saves are stored.
         /// </summary>
         /// <returns>The saves path.</returns>
         public static string GetSavesPath()
@@ -186,7 +182,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Get the path to the given world's save directory.
+        ///     Get the path to the given world's save directory.
         /// </summary>
         /// <param name="worldPath">The world to get.</param>
         /// <returns>The world's save path.</returns>

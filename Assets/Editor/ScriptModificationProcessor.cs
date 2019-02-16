@@ -1,6 +1,6 @@
-﻿using UnityEditor;
+﻿using System.IO;
+using UnityEditor;
 using UnityEngine;
-using System.Collections;
 
 public class ScriptModificationProcessor : UnityEditor.AssetModificationProcessor
 {
@@ -16,12 +16,12 @@ public class ScriptModificationProcessor : UnityEditor.AssetModificationProcesso
 
             index = Application.dataPath.LastIndexOf("Assets");
             path = Application.dataPath.Substring(0, index) + path;
-            file = System.IO.File.ReadAllText(path);
+            file = File.ReadAllText(path);
 
             file = file.Replace("#COMPANYNAMESPACE#", PascalCaseNoSpaces(PlayerSettings.companyName));
             file = file.Replace("#PRODUCTNAMESPACE#", PascalCaseNoSpaces(PlayerSettings.productName));
 
-            System.IO.File.WriteAllText(path, file);
+            File.WriteAllText(path, file);
             AssetDatabase.Refresh();
         }
     }
@@ -31,10 +31,7 @@ public class ScriptModificationProcessor : UnityEditor.AssetModificationProcesso
         string[] words = s.Split(' ');
         string result = string.Empty;
 
-        foreach (string word in words)
-        {
-            result += char.ToUpper(word[0]) + word.Substring(1);
-        }
+        foreach (string word in words) result += char.ToUpper(word[0]) + word.Substring(1);
 
         return result;
     }

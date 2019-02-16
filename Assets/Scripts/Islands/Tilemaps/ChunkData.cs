@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Pandawan.Islands.Tilemaps
 {
@@ -19,10 +20,11 @@ namespace Pandawan.Islands.Tilemaps
     [Serializable]
     public class ChunkData
     {
-        [SerializeField] private Dictionary<ChunkDataKey, ChunkDataValue> positionProperties =
+        [SerializeField] private readonly Dictionary<ChunkDataKey, ChunkDataValue> positionProperties =
             new Dictionary<ChunkDataKey, ChunkDataValue>();
+
         internal Dictionary<ChunkDataKey, ChunkDataValue> PositionProperties => positionProperties;
-        
+
         #region Set
 
         public bool SetPositionProperty<T>(Vector3Int position, string name, T positionProperty)
@@ -50,7 +52,7 @@ namespace Pandawan.Islands.Tilemaps
             return SetPositionProperty(position, name, ChunkDataType.Double, positionProperty);
         }
 
-        public bool SetPositionProperty(Vector3Int position, string name, UnityEngine.Object positionProperty)
+        public bool SetPositionProperty(Vector3Int position, string name, Object positionProperty)
         {
             return SetPositionProperty(position, name, ChunkDataType.UnityObject, positionProperty);
         }
@@ -84,7 +86,7 @@ namespace Pandawan.Islands.Tilemaps
 
         #region Get
 
-        public T GetPositionProperty<T>(Vector3Int position, string name, T defaultValue) where T : UnityEngine.Object
+        public T GetPositionProperty<T>(Vector3Int position, string name, T defaultValue) where T : Object
         {
             ChunkDataKey positionKey;
             positionKey.position = position;
@@ -187,7 +189,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         #endregion
-        
+
         #region Others
 
         public bool ErasePositionProperty(Vector3Int position, string name)
