@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Pandawan.Islands.Other;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -192,12 +193,26 @@ namespace Pandawan.Islands.Tilemaps
 
         #region Others
 
+        /// <summary>
+        ///     Remove the property at the given position and with the given name.
+        /// </summary>
+        /// <param name="position">The position of the property to erase.</param>
+        /// <param name="name">The name of the property to erase.</param>
         public bool ErasePositionProperty(Vector3Int position, string name)
         {
             ChunkDataKey positionKey;
             positionKey.position = position;
             positionKey.name = name;
             return positionProperties.Remove(positionKey);
+        }
+
+        /// <summary>
+        ///     Remove all of the properties at the given position (regardless of their name).
+        /// </summary>
+        /// <param name="position">The position of the property to erase.</param>
+        public bool ErasePositionProperty(Vector3Int position)
+        {
+            return positionProperties.RemoveAll((key, value) => key.position == position);
         }
 
         public virtual void Reset()

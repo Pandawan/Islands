@@ -8,15 +8,15 @@ namespace Pandawan.Islands.Tilemaps.Tiles
     [Serializable]
     public class BasicTile : TileBase
     {
-        [SerializeField] private string m_TileName;
+        [SerializeField] protected string m_TileName;
 
-        [SerializeField] private Sprite m_Sprite;
+        [SerializeField] protected Sprite m_Sprite;
 
-        [SerializeField] private Color m_Color = Color.white;
+        [SerializeField] protected Color m_Color = Color.white;
 
-        [SerializeField] private Tile.ColliderType m_ColliderType = Tile.ColliderType.None;
+        [SerializeField] protected Tile.ColliderType m_ColliderType = Tile.ColliderType.None;
 
-        [SerializeField] private string m_Id => name;
+        [SerializeField] protected string m_Id => name;
 
         public string Id => m_Id;
 

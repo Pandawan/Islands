@@ -26,21 +26,29 @@ namespace Pandawan.Islands.Tilemaps
                 instance = this;
             else
                 Debug.LogError("Cannot have more than one World instance.");
+
+            // TODO: Move WorldGen outside of world (see Start)
+            if (worldGen == null) 
+                Debug.LogError("No WorldGen set for World.");
+
+            if (tilemap == null)
+                Debug.LogError("No Tilemap set for World.");
         }
 
         private void Start()
         {
+            // TODO: Move all of this outside of World
             // Load previous world save if exists
-            if (WorldManager.WorldExists(worldInfo.GetId())) WorldManager.Load(worldInfo.GetId(), this);
+            // if (WorldManager.WorldExists(worldInfo.GetId())) WorldManager.Load(worldInfo.GetId(), this);
 
             // Initiate World Generation
             worldGen.Generate(this);
 
             // Save the newly generated world
-            WorldManager.Save(this);
+            // WorldManager.Save(this);
 
             // Test ChunkData
-            Debug.Log(GetChunkDataForTile(Vector3Int.zero).GetPositionProperty(Vector3Int.zero, "test", "aaa"));
+            // Debug.Log(GetChunkDataForTile(Vector3Int.zero).GetPositionProperty(Vector3Int.zero, "test", "aaa"));
         }
 
         /// <summary>
@@ -122,7 +130,7 @@ namespace Pandawan.Islands.Tilemaps
         #region Chunk Abstraction
 
         /// <summary>
-        ///     Convert the given Tile Position to it's corresponding Chunk's position
+        ///     Convert the given Tile Position to its corresponding Chunk's position
         /// </summary>
         /// <param name="position">The position of the tile</param>
         /// <returns>The position of the chunk</returns>
@@ -138,34 +146,31 @@ namespace Pandawan.Islands.Tilemaps
         /// <summary>
         ///     Get, Load, or Create a chunk at the given position.
         /// </summary>
-        /// <param name="position">The position of the chunk</param>
-        /// <returns>The Chunk</returns>
-        private Chunk GetOrCreateChunk(Vector3Int position)
+        /// <param name="chunkPosition">The chunk position.</param>
+        private Chunk GetOrCreateChunk(Vector3Int chunkPosition)
         {
             // If it doesn't exist, create a new one
-            if (!chunks.ContainsKey(position)) chunks.Add(position, new Chunk(position, chunkSize, tilemap));
+            if (!chunks.ContainsKey(chunkPosition)) chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
 
-            return chunks[position];
+            return chunks[chunkPosition];
         }
 
         /// <summary>
         ///     Get the ChunkData object for the given chunk position.
         /// </summary>
-        /// <param name="position">The Chunk position.</param>
-        /// <returns>The ChunkData object.</returns>
-        public ChunkData GetChunkData(Vector3Int position)
+        /// <param name="chunkPosition">The Chunk position.</param>
+        public ChunkData GetChunkData(Vector3Int chunkPosition)
         {
             // If it doesn't exist
-            if (!chunks.ContainsKey(position)) Debug.LogError($"No Chunk found at position {position}.");
+            if (!chunks.ContainsKey(chunkPosition)) Debug.LogError($"No Chunk found at position {chunkPosition}.");
 
-            return chunks[position].GetChunkData();
+            return chunks[chunkPosition].GetChunkData();
         }
 
         /// <summary>
         ///     Helper to get the ChunkData object for the Chunk that contains the given tile position.
         /// </summary>
         /// <param name="tilePosition">The Tile position to use.</param>
-        /// <returns>The ChunkData object.</returns>
         public ChunkData GetChunkDataForTile(Vector3Int tilePosition)
         {
             return GetChunkData(GetChunkPositionForTile(tilePosition));
@@ -174,51 +179,62 @@ namespace Pandawan.Islands.Tilemaps
         /// <summary>
         ///     Whether or not the given tile position is empty/has no tile.
         /// </summary>
-        /// <param name="position">The position to check for.</param>
+        /// <param name="tilePosition">The position to check for.</param>
         /// <returns>True if there is no tile at the given position.</returns>
-        public bool IsEmptyTile(Vector3Int position)
+        public bool IsEmptyTileAt(Vector3Int tilePosition)
         {
             // If the Tile doesn't exist OR its value is empty
-            return GetTile(position) == null ||
-                   string.IsNullOrEmpty(GetTile(position).Id);
+            return GetTileAt(tilePosition) == null ||
+                   string.IsNullOrEmpty(GetTileAt(tilePosition).Id);
         }
 
         /// <summary>
         ///     Get the tile at the given position.
         /// </summary>
-        /// <param name="position">The position to get the tile at.</param>
-        /// <returns>The BasicTile object.</returns>
-        public BasicTile GetTile(Vector3Int position)
+        /// <param name="tilePosition">The position to get the tile at.</param>
+        public BasicTile GetTileAt(Vector3Int tilePosition)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(position));
-            return chunk.GetTile(position);
+            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
+            return chunk.GetTileAt(tilePosition);
         }
 
         /// <summary>
         ///     Set a tile in the world using an id.
         /// </summary>
-        /// <param name="position">The position to set the tile at.</param>
+        /// <param name="tilePosition">The position to set the tile at.</param>
         /// <param name="id">The id of tile to set.</param>
-        public void SetTile(Vector3Int position, string id)
+        public void SetTileAt(Vector3Int tilePosition, string id)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(position));
+            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
 
-            chunk.SetTile(position, id);
+            chunk.SetTileAt(tilePosition, id);
         }
 
         /// <summary>
         ///     Set a tile in the world using a BasicTile.
         /// </summary>
-        /// <param name="position">The position to set the tile at.</param>
+        /// <param name="tilePosition">The position to set the tile at.</param>
         /// <param name="tile">The BasicTile object to set.</param>
-        public void SetTile(Vector3Int position, BasicTile tile)
+        public void SetTileAt(Vector3Int tilePosition, BasicTile tile)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(position));
+            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
 
-            chunk.SetTile(position, tile);
+            chunk.SetTileAt(tilePosition, tile);
+        }
+
+        /// <summary>
+        /// Remove the tile at the given position.
+        /// </summary>
+        /// <param name="tilePosition">The position to remove the tile at.</param>
+        public void RemoveTileAt(Vector3Int tilePosition)
+        {
+            // TODO: Might want to make it so that removing and getting a tile doesn't CREATE a new chunk if none exists (and if there is no loadable chunk)
+            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
+
+            chunk.RemoveTileAt(tilePosition);
         }
 
         #endregion

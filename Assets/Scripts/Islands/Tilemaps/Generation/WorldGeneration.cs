@@ -6,17 +6,17 @@ namespace Pandawan.Islands.Tilemaps.Generation
     [Serializable]
     public class WorldGeneration
     {
-        [SerializeField] private GenerationType type;
-        [SerializeField] private BoundsInt islandSize;
-
+        [SerializeField] private GenerationType type = GenerationType.Perlin;
+        [SerializeField] private BoundsInt islandSize = new BoundsInt(Vector3Int.one * -1, Vector3Int.one);
+        
         public void Generate(World world)
         {
-            // Generate water everywhere around
-            WaterGeneration(world);
-
             // TODO: Find a seed system so that auto-generated tiles aren't saved by the world? Or perhaps something like, replace if empty? Idk...
             switch (type)
             {
+                case GenerationType.Perlin:
+                    PerlinGeneration(world);
+                    break;
                 case GenerationType.Circle:
                     CircleGeneration(world);
                     break;
@@ -29,7 +29,30 @@ namespace Pandawan.Islands.Tilemaps.Generation
                     break;
             }
 
+            // Generate water everywhere around
+            // WaterGeneration(world);
+
             world.GetChunkDataForTile(Vector3Int.zero).SetPositionProperty(Vector3Int.zero, "test", "123");
+        }
+
+        private void PerlinGeneration(World world)
+        {
+            // TODO: Negative values are inverse of positive, find a fix for this (maybe local coordinates?)
+            // Perlin returns the same value for ints, use a scaler to prevent this
+            float scaler = 0.125f;
+
+            for (int x = islandSize.xMin; x < islandSize.xMax; x++)
+            for (int y = islandSize.yMin; y < islandSize.yMax; y++)
+            {
+                Vector3Int position = new Vector3Int(x, y, 0);
+                float height = Mathf.PerlinNoise(x * scaler, y * scaler);
+                string tile = "water";
+                if (height > 0.35f)
+                {
+                    tile = "grass";
+                }
+                if (world.IsEmptyTileAt(position)) world.SetTileAt(position, tile);
+            }
         }
 
         private void SquareGeneration(World world)
@@ -38,7 +61,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
             for (int y = islandSize.yMin; y < islandSize.yMax; y++)
             {
                 Vector3Int position = new Vector3Int(x, y, 0);
-                if (world.IsEmptyTile(position)) world.SetTile(position, "grass");
+                if (world.IsEmptyTileAt(position)) world.SetTileAt(position, "grass");
             }
         }
 
@@ -50,7 +73,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
                     y != islandSize.yMin && y != islandSize.yMax - 1)
                 {
                     Vector3Int position = new Vector3Int(x, y, 0);
-                    if (world.IsEmptyTile(position)) world.SetTile(position, "grass");
+                    if (world.IsEmptyTileAt(position)) world.SetTileAt(position, "grass");
                 }
         }
 
@@ -65,7 +88,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
             for (int y = islandSize.yMin - islandSize.size.y; y < islandSize.yMax + islandSize.size.y; y++)
             {
                 Vector3Int position = new Vector3Int(x, y, 0);
-                if (world.IsEmptyTile(position)) world.SetTile(position, "water");
+                if (world.IsEmptyTileAt(position)) world.SetTileAt(position, "water");
             }
         }
 
@@ -73,7 +96,8 @@ namespace Pandawan.Islands.Tilemaps.Generation
         {
             Square,
             SquareNoBorders,
-            Circle
+            Circle,
+            Perlin
         }
     }
 }

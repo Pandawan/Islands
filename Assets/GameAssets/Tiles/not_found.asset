@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 38c15c16ddce730439575cdd99b919c4, type: 3}
-  m_Name: water
+  m_Name: not_found
   m_EditorClassIdentifier: 
-  m_TileName: Water
-  m_Sprite: {fileID: 21300000, guid: 7cda990893239374e8c70f7c598a67c4, type: 3}
+  m_TileName: Not Found
+  m_Sprite: {fileID: 21300000, guid: 325385302e2e95c4399341fa14512cb8, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_ColliderType: 0

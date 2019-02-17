@@ -17,7 +17,8 @@ namespace Pandawan.Islands.Camera
         private void Awake()
         {
             // TODO: Make auto-find target system
-            if (target == null) Debug.LogError("No target set for CameraFollow");
+            if (target == null)
+                Debug.LogError("No target set for CameraFollow.");
         }
 
         private void Update()

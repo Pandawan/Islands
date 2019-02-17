@@ -14,6 +14,7 @@ namespace Pandawan.Islands.Tilemaps
         [SerializeField] private string[] tiles;
 
         // Used to save anything dynamic/runtime in the chunk
+        // TODO: Make sure ChunkData uses localPosition for everything!
         [SerializeField] private ChunkData chunkData;
 
         // The Chunk's actual position
@@ -109,6 +110,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <returns></returns>
         public ChunkData GetChunkData()
         {
+            // TODO: Restrict access from ChunkData through custom methods rather than full access to ChunkData
             return chunkData;
         }
 
@@ -204,7 +206,7 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position to get the tile at.</param>
         /// <returns>The BasicTile object.</returns>
-        public BasicTile GetTile(Vector3Int tilePosition)
+        public BasicTile GetTileAt(Vector3Int tilePosition)
         {
             if (!IsValidPosition(tilePosition))
             {
@@ -221,7 +223,7 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position to get the TilePair at.</param>
         /// <returns>The TilePair object.</returns>
-        private string GetTileId(Vector3Int tilePosition)
+        private string GetTileIdAt(Vector3Int tilePosition)
         {
             if (!IsValidPosition(tilePosition))
             {
@@ -239,7 +241,7 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position at which to set the tile.</param>
         /// <param name="tileId">The id of the tile to set.</param>
-        public void SetTile(Vector3Int tilePosition, string tileId)
+        public void SetTileAt(Vector3Int tilePosition, string tileId)
         {
             if (!IsValidPosition(tilePosition))
             {
@@ -250,13 +252,13 @@ namespace Pandawan.Islands.Tilemaps
             // If it's an empty id, trying to remove the tile
             if (string.IsNullOrEmpty(tileId))
             {
-                RemoveTile(tilePosition);
+                RemoveTileAt(tilePosition);
                 return;
             }
 
-            // Get the corresponding BasicTile and call SetTile with the BasicTile
+            // Get the corresponding BasicTile and call SetTileAt with the BasicTile
             BasicTile tile = TileDB.instance.GetTile(tileId);
-            SetTile(tilePosition, tile);
+            SetTileAt(tilePosition, tile);
         }
 
         /// <summary>
@@ -264,7 +266,7 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position at which to set the tile.</param>
         /// <param name="tile">The Tile object to set</param>
-        public void SetTile(Vector3Int tilePosition, BasicTile tile)
+        public void SetTileAt(Vector3Int tilePosition, BasicTile tile)
         {
             if (!IsValidPosition(tilePosition))
             {
@@ -275,7 +277,7 @@ namespace Pandawan.Islands.Tilemaps
             // If the tile is null, trying to remove the tile
             if (tile == null)
             {
-                RemoveTile(tilePosition);
+                RemoveTileAt(tilePosition);
                 return;
             }
 
@@ -289,14 +291,15 @@ namespace Pandawan.Islands.Tilemaps
             // Set the Chunk as Dirty
             IsDirty = true;
 
-            // TODO: Don't forget to reset the GridInformation
+            // Reset the ChunkData for this position
+            chunkData.ErasePositionProperty(localPosition);
         }
 
         /// <summary>
         ///     Remove the tile at the given position.
         /// </summary>
         /// <param name="tilePosition">The position at which to remove the tile.</param>
-        public void RemoveTile(Vector3Int tilePosition)
+        public void RemoveTileAt(Vector3Int tilePosition)
         {
             if (!IsValidPosition(tilePosition))
             {
@@ -309,7 +312,11 @@ namespace Pandawan.Islands.Tilemaps
 
             IsDirty = true;
 
-            // TODO: Reset GridInformation
+            // Remove the tile in the Tilemap
+            tilemap.SetTile(tilePosition, null);
+
+            // Reset the ChunkData for this position
+            chunkData.ErasePositionProperty(localPosition);
         }
 
         #endregion
