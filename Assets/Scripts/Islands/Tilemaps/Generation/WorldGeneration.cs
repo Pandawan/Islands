@@ -32,7 +32,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
             // Generate water everywhere around
             // WaterGeneration(world);
 
-            world.GetChunkDataForTile(Vector3Int.zero).SetPositionProperty(Vector3Int.zero, "test", "123");
+            // world.GetChunkDataForTile(Vector3Int.zero).SetPositionProperty(Vector3Int.zero, "test", "123");
         }
 
         private void PerlinGeneration(World world)

@@ -15,4 +15,5 @@ MonoBehaviour:
   m_TileName: Tree
   m_Sprite: {fileID: 21300000, guid: 478f5ab92ece44347b6bd5545247b559, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_ColliderType: 0
+  m_ColliderType: 2
+  m_Offset: {x: 0, y: -0.5}
