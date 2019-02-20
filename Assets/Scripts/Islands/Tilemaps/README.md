@@ -5,6 +5,7 @@
 - [Abstraction Layer](#Abstraction-Layer)
 - [Tilemap](#Tilemap)
 - [GridInformation](#GridInformation)
+- [Tile Pivot and Collider](#Tile-Pivot-and-Collider)
 
 ## Abstraction Layer
 
@@ -82,3 +83,24 @@ GridInformation already implements a system to serialize it. You can serialize i
 
 If a data type you want to save is not supported by the GridInformation system, you have to implement it yourself.
 Open the `GridInformation.cs` file, and add custom `GridInformationType` as well as custom Lists and Methods to save/get/serialize.
+
+
+## Tile Pivot and Collider
+
+Setting a custom pivot/offset and collider for a tile is simple. You can do it all from the Sprite itself (or by modifying the TileData.sprite).
+
+### Pivot
+
+To set a custom pivot or offset for the tile, open the Sprite Editor and set a custom Pivot.
+
+This can also be done at runtime using the `TileData.sprite.pivot` (or from the BasicTile's `Sprite`).
+
+### Collider
+
+To use a custom collider for the tile, open the Sprite Editor. 
+Set the top left dropdown to "Custom Physics Shape" and create a custom shape.
+You can also use the "Generate" button to generate one based on pixels.
+
+This can also be done at runtime using the `TileData.sprite.OverridePhysicsShape()` (or from the BasicTile's `Sprite`).
+
+NOTE: Making the height too small might be an issue when sorting with the player. Watch out for this issue.

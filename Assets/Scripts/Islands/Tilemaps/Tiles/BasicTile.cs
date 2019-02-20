@@ -49,10 +49,6 @@ namespace Pandawan.Islands.Tilemaps.Tiles
             tileData.sprite = Sprite;
             tileData.color = Color;
             tileData.colliderType = ColliderType;
-            
-            // TODO: Find way to add custom offset + custom collider (without having to edit the Sprite itself)
-            // Example: Custom offset would affect both the sprite and the collider
-            // Or perhaps one for each? This would allow for trees to have a 0.5x collider but be 2x height
         }
     }
 }
