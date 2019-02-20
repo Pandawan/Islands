@@ -15,9 +15,7 @@ namespace Pandawan.Islands.Tilemaps.Tiles
         [SerializeField] protected Color m_Color = Color.white;
 
         [SerializeField] protected Tile.ColliderType m_ColliderType = Tile.ColliderType.None;
-
-        [SerializeField] protected Vector2 m_Offset = Vector2.zero;
-
+        
         [SerializeField] protected string m_Id => name;
 
         public string Id => m_Id;
@@ -45,24 +43,16 @@ namespace Pandawan.Islands.Tilemaps.Tiles
             get { return m_ColliderType; }
             set { m_ColliderType = value; }
         }
-
-        public Vector2 Offset
-        {
-            get { return m_Offset; }
-            set { m_Offset = value; }
-        }
-
+        
         public override void GetTileData(Vector3Int location, ITilemap tilemap, ref TileData tileData)
         {
             tileData.sprite = Sprite;
             tileData.color = Color;
             tileData.colliderType = ColliderType;
             
-            // Offset position
-            Matrix4x4 transform = tileData.transform;
-            transform.SetRow(0, new Vector4(1f, 0, 0, Offset.x));
-            transform.SetRow(1, new Vector4(0, 1f, 0, Offset.y));
-            tileData.transform = transform;
+            // TODO: Find way to add custom offset + custom collider (without having to edit the Sprite itself)
+            // Example: Custom offset would affect both the sprite and the collider
+            // Or perhaps one for each? This would allow for trees to have a 0.5x collider but be 2x height
         }
     }
 }
