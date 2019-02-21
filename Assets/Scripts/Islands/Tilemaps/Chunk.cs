@@ -14,7 +14,6 @@ namespace Pandawan.Islands.Tilemaps
         [SerializeField] private string[] tiles;
 
         // Used to save anything dynamic/runtime in the chunk
-        // TODO: Make sure ChunkData uses localPosition for everything!
         [SerializeField] private ChunkData chunkData;
 
         // The Chunk's actual position
@@ -32,7 +31,7 @@ namespace Pandawan.Islands.Tilemaps
         public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap)
         {
             tiles = new string[size.x * size.y * size.z];
-            chunkData = new ChunkData();
+            chunkData = new ChunkData(new BoundsInt(position, size));
             this.position = position;
             this.size = size;
             this.tilemap = tilemap;
@@ -42,7 +41,7 @@ namespace Pandawan.Islands.Tilemaps
         public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap, string[] tiles)
         {
             this.tiles = tiles;
-            chunkData = new ChunkData();
+            chunkData = new ChunkData(new BoundsInt(position, size));
             this.position = position;
             this.size = size;
             this.tilemap = tilemap;
@@ -81,7 +80,7 @@ namespace Pandawan.Islands.Tilemaps
             // If tiles array doesn't exist, create it 
             if (tiles == null) tiles = new string[size.x * size.y * size.z];
             // If ChunkData doesn't exist, create it
-            if (chunkData == null) chunkData = new ChunkData();
+            if (chunkData == null) chunkData = new ChunkData(new BoundsInt(position, size));
         }
 
         /// <summary>
@@ -106,6 +105,7 @@ namespace Pandawan.Islands.Tilemaps
 
         /// <summary>
         ///     Get the ChunkData object.
+        ///     Note: This will not check if the passed position is within chunk bounds.
         /// </summary>
         /// <returns></returns>
         public ChunkData GetChunkData()
@@ -155,7 +155,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        ///     Convert a Global/World Position to a Local/Chunk Position
+        ///     Convert a World/Tile Position to a Local/Chunk Position
         /// </summary>
         /// <param name="globalPosition">The Global Position to convert.</param>
         /// <returns>The converted Local Position.</returns>

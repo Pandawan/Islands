@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using Pandawan.Islands.Other;
 using UnityEngine;
 
 namespace Pandawan.Islands.Tilemaps.Generation
@@ -32,7 +34,8 @@ namespace Pandawan.Islands.Tilemaps.Generation
             // Generate water everywhere around
             // WaterGeneration(world);
 
-            // world.GetChunkDataForTile(Vector3Int.zero).SetPositionProperty(Vector3Int.zero, "test", "123");
+            world.GetChunkDataForTile(Vector3Int.zero).SetPositionProperty(Vector3Int.zero, "test", "123");
+            Debug.Log(world.GetChunkDataForTile(Vector3Int.zero).GetAllPropertiesAt(Vector3Int.zero).ToStringFlattened());
         }
 
         private void PerlinGeneration(World world)
