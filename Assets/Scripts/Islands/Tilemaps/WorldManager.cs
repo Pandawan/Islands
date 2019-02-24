@@ -5,22 +5,50 @@ using System.Runtime.Serialization.Formatters.Binary;
 using Pandawan.Islands.Other;
 using Pandawan.Islands.Serialization;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 // TODO: Might want to move this to a different namespace?
 namespace Pandawan.Islands.Tilemaps
 {
     public static class WorldManager
     {
-        // TODO: Standardize the error messages
-        // TODO: Find a way to make this work on separate threads
+        // TODO: Optimize this? Check if possible to import multiple tiles at once? Or maybe make it so that the Chunk doesn't "SET" the tilemap again.
+        /// <summary>
+        ///     Imports all of the tiles in the tilemap into the World
+        /// </summary>
+        /// <param name="tilemap">The Tilemap to import from</param>
+        /// <param name="world">The World to import to</param>
+        public static void ImportTilemap(Tilemap tilemap, World world)
+        {
+            foreach (Vector3Int pos in tilemap.cellBounds.allPositionsWithin)
+            {
+                if (tilemap.HasTile(pos))
+                {
+                    world.SetTileAt(pos, tilemap.GetTile<TileBase>(pos).name);
+                }
+            }
+        }
+
         /// <summary>
         ///     Save the given world to the file system.
         /// </summary>
         /// <param name="world">The world to save.</param>
         public static void Save(World world)
         {
-            List<Chunk> chunks = world.GetDirtyChunks();
             string savePath = GetWorldSavePath(world.GetWorldInfo().GetId());
+            Save(world, savePath);
+        }
+
+        // TODO: Standardize the error messages
+        // TODO: Find a way to make this work on separate threads
+        /// <summary>
+        ///     Save the given world to the file system.
+        /// </summary>
+        /// <param name="world">The world to save.</param>
+        /// <param name="savePath">The path at which to save the world.</param>
+        public static void Save(World world, string savePath)
+        {
+            List<Chunk> chunks = world.GetDirtyChunks();
             string chunksPath = Path.Combine(savePath, "chunks");
 
             // Check that the save path already exists

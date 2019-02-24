@@ -29,10 +29,13 @@ namespace Pandawan.Islands.Tilemaps
 
         internal Dictionary<ChunkDataKey, ChunkDataValue> PositionProperties => positionProperties;
 
+        [NonSerialized] private readonly Chunk chunk;
+
         #region Constructor
 
-        public ChunkData(BoundsInt chunkBounds)
+        public ChunkData(Chunk chunk, BoundsInt chunkBounds)
         {
+            this.chunk = chunk;
             this.chunkBounds = chunkBounds;
         }
 
@@ -282,26 +285,14 @@ namespace Pandawan.Islands.Tilemaps
         public Vector3Int GlobalToLocalPosition(Vector3Int globalPosition)
         {
             // Check that this globalPosition is valid for this ChunkData
-            if (!IsValidPosition(globalPosition))
+            if (!chunk.IsValidPosition(globalPosition))
                 Debug.LogError($"Position {globalPosition} is not valid for Chunk at {chunkBounds.position}");
 
             return new Vector3Int((globalPosition.x % chunkBounds.size.x + chunkBounds.size.x) % chunkBounds.size.x,
                 (globalPosition.y % chunkBounds.size.y + chunkBounds.size.y) % chunkBounds.size.y,
                 (globalPosition.z % chunkBounds.size.z + chunkBounds.size.z) % chunkBounds.size.z);
         }
-
-
-        /// <summary>
-        ///     Whether or not the given Tile Position is valid in this chunk.
-        /// </summary>
-        /// <param name="globalPosition">The position of the tile to check.</param>
-        /// <returns>True if it is valid in this chunk.</returns>
-        private bool IsValidPosition(Vector3Int globalPosition)
-        {
-            // Use the World's formula for chunk positions and check that they match
-            return World.instance.GetChunkPositionForTile(globalPosition) == chunkBounds.position;
-        }
-
+        
         #endregion
 
         #region Structs

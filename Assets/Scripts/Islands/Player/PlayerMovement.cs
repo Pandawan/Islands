@@ -8,7 +8,7 @@ namespace Pandawan.Islands.Player
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Animator))]
-    public class PlayerController : MonoBehaviour
+    public class PlayerMovement : MonoBehaviour
     {
         /// <summary>
         ///     The speed at which the player moves

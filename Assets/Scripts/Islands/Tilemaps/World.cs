@@ -14,9 +14,11 @@ namespace Pandawan.Islands.Tilemaps
         public static World instance;
 
         [SerializeField] private WorldInfo worldInfo;
-        [SerializeField] private WorldGeneration worldGen;
         [SerializeField] private Vector3Int chunkSize;
         [SerializeField] private Tilemap tilemap;
+
+        public delegate void WorldEvent(World world);
+        public event WorldEvent GenerationEvent;
 
         private readonly Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
 
@@ -26,29 +28,16 @@ namespace Pandawan.Islands.Tilemaps
                 instance = this;
             else
                 Debug.LogError("Cannot have more than one World instance.");
-
-            // TODO: Move WorldGen outside of world (see Start)
-            if (worldGen == null) 
-                Debug.LogError("No WorldGen set for World.");
-
+            
             if (tilemap == null)
                 Debug.LogError("No Tilemap set for World.");
+
         }
 
         private void Start()
         {
-            // TODO: Move all of this outside of World
-            // Load previous world save if exists
-            // if (WorldManager.WorldExists(worldInfo.GetId())) WorldManager.Load(worldInfo.GetId(), this);
-
-            // Initiate World Generation
-            worldGen.Generate(this);
-
-            // Save the newly generated world
-            // WorldManager.Save(this);
-
-            // Test ChunkData
-            // Debug.Log(GetChunkDataForTile(Vector3Int.zero).GetPositionProperty(Vector3Int.zero, "test", "aaa"));
+            // Call any event handler subscribed to World.GenerationEvent
+            GenerationEvent?.Invoke(this);
         }
 
         /// <summary>
@@ -150,7 +139,8 @@ namespace Pandawan.Islands.Tilemaps
         private Chunk GetOrCreateChunk(Vector3Int chunkPosition)
         {
             // If it doesn't exist, create a new one
-            if (!chunks.ContainsKey(chunkPosition)) chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
+            if (!chunks.ContainsKey(chunkPosition))
+                chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
 
             return chunks[chunkPosition];
         }
@@ -226,7 +216,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Remove the tile at the given position.
+        ///     Remove the tile at the given position.
         /// </summary>
         /// <param name="tilePosition">The position to remove the tile at.</param>
         public void RemoveTileAt(Vector3Int tilePosition)

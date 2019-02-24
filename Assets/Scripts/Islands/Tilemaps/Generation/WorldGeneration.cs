@@ -1,21 +1,37 @@
 using System;
-using System.Linq;
 using Pandawan.Islands.Other;
 using UnityEngine;
 
 namespace Pandawan.Islands.Tilemaps.Generation
 {
-    [Serializable]
-    public class WorldGeneration
+    [RequireComponent(typeof(World))]
+    public class WorldGeneration : MonoBehaviour
     {
-        [SerializeField] private GenerationType type = GenerationType.Perlin;
+        [SerializeField] private GenerationType type = GenerationType.None;
         [SerializeField] private BoundsInt islandSize = new BoundsInt(Vector3Int.one * -1, Vector3Int.one);
-        
+
+        private World worldComponent;
+
+        private void Awake()
+        {
+            worldComponent = GetComponent<World>();
+
+            if (worldComponent == null)
+            {
+                Debug.LogError("World Component is required for WorldGeneration to act.");
+                return;
+            }
+
+            worldComponent.GenerationEvent += Generate;
+        }
+
         public void Generate(World world)
         {
             // TODO: Find a seed system so that auto-generated tiles aren't saved by the world? Or perhaps something like, replace if empty? Idk...
             switch (type)
             {
+                case GenerationType.None:
+                    return;
                 case GenerationType.Perlin:
                     PerlinGeneration(world);
                     break;
@@ -35,7 +51,10 @@ namespace Pandawan.Islands.Tilemaps.Generation
             // WaterGeneration(world);
 
             world.GetChunkDataForTile(Vector3Int.zero).SetPositionProperty(Vector3Int.zero, "test", "123");
-            Debug.Log(world.GetChunkDataForTile(Vector3Int.zero).GetAllPropertiesAt(Vector3Int.zero).ToStringFlattened());
+            Debug.Log(
+                world.GetChunkDataForTile(Vector3Int.zero).GetAllPropertiesAt(Vector3Int.zero).ToStringFlattened());
+
+            Debug.Log("Successfully Generated World.");
         }
 
         private void PerlinGeneration(World world)
@@ -50,10 +69,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
                 Vector3Int position = new Vector3Int(x, y, 0);
                 float height = Mathf.PerlinNoise(x * scaler, y * scaler);
                 string tile = "water";
-                if (height > 0.35f)
-                {
-                    tile = "grass";
-                }
+                if (height > 0.35f) tile = "grass";
                 if (world.IsEmptyTileAt(position)) world.SetTileAt(position, tile);
             }
         }
@@ -97,6 +113,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
 
         private enum GenerationType
         {
+            None,
             Square,
             SquareNoBorders,
             Circle,

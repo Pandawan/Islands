@@ -31,7 +31,7 @@ namespace Pandawan.Islands.Tilemaps
         public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap)
         {
             tiles = new string[size.x * size.y * size.z];
-            chunkData = new ChunkData(new BoundsInt(position, size));
+            chunkData = new ChunkData(this, new BoundsInt(position, size));
             this.position = position;
             this.size = size;
             this.tilemap = tilemap;
@@ -41,14 +41,14 @@ namespace Pandawan.Islands.Tilemaps
         public Chunk(Vector3Int position, Vector3Int size, Tilemap tilemap, string[] tiles)
         {
             this.tiles = tiles;
-            chunkData = new ChunkData(new BoundsInt(position, size));
+            chunkData = new ChunkData(this, new BoundsInt(position, size));
             this.position = position;
             this.size = size;
             this.tilemap = tilemap;
             IsDirty = false;
         }
 
-        public Chunk(BoundsInt bounds, Tilemap tilemap, ChunkData gridInfo)
+        public Chunk(BoundsInt bounds, Tilemap tilemap, ChunkData chunkData)
         {
             tiles = new string[size.x * size.y * size.z];
 
@@ -66,6 +66,10 @@ namespace Pandawan.Islands.Tilemaps
 
             // Apply the position
             position = bounds.position;
+            size = bounds.size;
+            this.tilemap = tilemap;
+            this.chunkData = chunkData;
+            IsDirty = false;
         }
 
         /// <summary>
@@ -80,7 +84,7 @@ namespace Pandawan.Islands.Tilemaps
             // If tiles array doesn't exist, create it 
             if (tiles == null) tiles = new string[size.x * size.y * size.z];
             // If ChunkData doesn't exist, create it
-            if (chunkData == null) chunkData = new ChunkData(new BoundsInt(position, size));
+            if (chunkData == null) chunkData = new ChunkData(this, new BoundsInt(position, size));
         }
 
         /// <summary>
@@ -195,7 +199,7 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position of the tile to check.</param>
         /// <returns>True if it is valid in this chunk.</returns>
-        private bool IsValidPosition(Vector3Int tilePosition)
+        public bool IsValidPosition(Vector3Int tilePosition)
         {
             // Use the World's formula for chunk positions and check that they match
             return World.instance.GetChunkPositionForTile(tilePosition) == position;

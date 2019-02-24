@@ -50,5 +50,10 @@ namespace Pandawan.Islands.Tilemaps.Tiles
             tileData.color = Color;
             tileData.colliderType = ColliderType;
         }
+
+        public override string ToString()
+        {
+            return $"BasicTile {TileName} ({Id})";
+        }
     }
 }

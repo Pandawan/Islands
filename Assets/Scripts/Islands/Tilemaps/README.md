@@ -1,11 +1,13 @@
 # Tilemaps
 
-**From now on, never use the Tilemap system, just use the World Abstraction Layer or expand it.**
+*Don't use the Tilemap directly, always use the World (Abstraction layer) to manipulate the tilemap.**
 
 - [Abstraction Layer](#Abstraction-Layer)
 - [Tilemap](#Tilemap)
 - [GridInformation](#GridInformation)
 - [Tile Pivot and Collider](#Tile-Pivot-and-Collider)
+- [Tile Editor](#Tile-Editor)
+- [World Generation](#World-Generation)
 
 ## Abstraction Layer
 
@@ -104,3 +106,25 @@ You can also use the "Generate" button to generate one based on pixels.
 This can also be done at runtime using the `TileData.sprite.OverridePhysicsShape()` (or from the BasicTile's `Sprite`).
 
 NOTE: Making the height too small might be an issue when sorting with the player. Watch out for this issue.
+
+## Tile Editor
+
+If you want to create a tilemap in the editor (out of runtime), so as to create custom/pre-made maps, use Unity's built-in editor.
+
+Simply create a BasicTile Scriptable Object ([just like you would at runtime](#Tilemap)), add them to the "Editor Palette" (found in `GameAssets` folder), and start creating.
+ 
+Then, add/enable a TilemapImporter component on the World game object so it can import all of these on GenerationEvent.
+
+## World Generation
+
+World Generation can be done in two ways. 
+
+1. TilemapImporter: When using a pre-made tilemap during EditMode, the TilemapImporter script will import the Unity Tilemap into a World-compatible tilemap.
+2. WorldGeneration: When procedurally generating new Worlds, the WorldGeneration script allows for runtime generation.
+
+### How it works
+World has an event called "GenerationEvent" which is called once the World is ready to be generated. Other components can subscribe to that event and generate once called.
+
+TilemapImporter simply calls WorldManager.ImportTilemap, which loops through every tile in the Tilemap, and `SetTile`s them in the World.
+
+WorldGeneration uses loops/perlin/other trickeries to generate using `SetTile`
