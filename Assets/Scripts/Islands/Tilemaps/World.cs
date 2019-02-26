@@ -18,12 +18,10 @@ namespace Pandawan.Islands.Tilemaps
         [SerializeField] private Vector3Int chunkSize;
         [SerializeField] private Tilemap tilemap;
 
-        // How long should a chunk be kept alive if it wasn't requested (in seconds)
-        [SerializeField] private float chunkKeepAliveDelay = 60;
-
         // TODO: This could be coupled to the Chunk itself by adding an extra public field and using chunks Dictionary directly.
         // Keeps track of the last "loading" request for each chunk
-        private readonly Dictionary<Vector3Int, float> chunkRequestTime = new Dictionary<Vector3Int, float>();
+        private readonly Dictionary<Vector3Int, List<ChunkLoader>> chunkLoadRequests =
+            new Dictionary<Vector3Int, List<ChunkLoader>>();
 
         // Keeps track of every chunk
         private readonly Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
@@ -92,32 +90,15 @@ namespace Pandawan.Islands.Tilemaps
 
         private void DiscardOldChunks()
         {
-            List<Chunk> chunksToSave = new List<Chunk>();
-            foreach (Vector3Int key in chunkRequestTime.Keys.ToList())
+            // TODO: Clean this up so I don't have to use null loaders
+            // Removes every chunk request that has a null loader (aka one-time load request)
+            foreach (KeyValuePair<Vector3Int, List<ChunkLoader>> chunkLoadRequest in chunkLoadRequests.ToList())
             {
-                chunkRequestTime[key] += Time.deltaTime;
-
-                if (chunkRequestTime[key] >= chunkKeepAliveDelay)
-                {
-                    // Keep a list of chunks to be saved (only Dirty)
-                    if (chunks[key].IsDirty)
-                        chunksToSave.Add(chunks[key]);
-                    else
-                        chunks[key].Clear(false);
-
-                    // Remove all chunks from the current chunks dictionary
-                    // Those that are to be saved still exist in the chunksToSave list
-                    chunks.Remove(key);
-                    chunkRequestTime.Remove(key);
-                }
-            }
-
-            // Save all of the chunks in the chunksToSave List
-            if (chunksToSave.Count > 0)
-            {
-                WorldManager.SaveChunks(chunksToSave, worldInfo);
-                // Clear them once saved
-                foreach (Chunk chunk in chunksToSave) chunk.Clear(false);
+                // Get every chunkLoadRequest which has a null loader
+                List<ChunkLoader> loaders = chunkLoadRequest.Value.FindAll(loader => loader == null);
+                foreach (ChunkLoader chunkLoader in loaders)
+                    // Remove the chunk
+                    RequestChunkUnLoading(chunkLoadRequest.Key, chunkLoader);
             }
         }
 
@@ -128,69 +109,82 @@ namespace Pandawan.Islands.Tilemaps
         /// <summary>
         ///     Request the loading of the chunk at the given position.
         /// </summary>
-        /// <param name="chunkPosition">The chunk position</param>
-        public void RequestChunkLoading(Vector3Int chunkPosition)
+        /// <param name="chunkPosition">The chunk position at which to load.</param>
+        /// <param name="requester">The ChunkLoader that requested to load this chunk.</param>
+        public void RequestChunkLoading(Vector3Int chunkPosition, ChunkLoader requester)
         {
             // Simply calling GetOrCreate works
-            GetOrCreateChunk(chunkPosition);
+            GetOrCreateChunk(chunkPosition, requester);
         }
 
 
         /// <summary>
         ///     Request the loading of the chunk within the given bounds.
         /// </summary>
-        /// <param name="chunkBounds">The bounds within wich to load the chunks.</param>
-        public void RequestChunkLoading(BoundsInt chunkBounds)
+        /// <param name="chunkPositions">The chunk positions at which to load.</param>
+        /// <param name="requester">The ChunkLoader that requested to load this chunk.</param>
+        public void RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
-            // This will call GetOrCreate on each chunk
-            GetChunksInBounds(chunkBounds);
-        }
-
-        public void RequestChunkUnLoading(Vector3Int chunkPosition, ChunkLoader requester)
-        {
-            if (!chunkLoadRequests[chunkPosition].Exists(loader => loader == requester))
+            // TODO: Optimize this so it loads multiple chunks at once (using the same FileStream in WorldManager)
+            // Load every chunkPosition
+            foreach (Vector3Int chunkPosition in chunkPositions)
             {
-                Debug.LogError($"Given {requester} never requested for chunk loading at {chunkPosition}.");
-                return;
-            }
-
-            chunkLoadRequests[chunkPosition].Remove(requester);
-
-            // If that Chunk is no longer needed
-            if (chunkLoadRequests[chunkPosition].Count == 0)
-            {
-                // Save the Chunk if Dirty
-                if (chunks[chunkPosition].IsDirty)
-                {
-                    WorldManager.SaveChunks(new List<Chunk> { chunks[chunkPosition] }, worldInfo);
-                }
-
-                // Clear the chunk from the Tilemap & its data
-                chunks[chunkPosition].Clear(false);
-                // Remove that chunkPosition from all records/dictionaries
-                chunks.Remove(chunkPosition);
-                chunkLoadRequests.Remove(chunkPosition);
+                GetOrCreateChunk(chunkPosition, requester);
             }
         }
 
         /// <summary>
-        ///     Get a dictionary of every chunk within the given bounds.
+        ///     Request the unloading of the chunk at the given position.
         /// </summary>
-        /// <param name="chunkBounds">Bounds in Chunk Coordinates.</param>
-        /// <returns>A Position-Chunk dictionary of the region.</returns>
-        public Dictionary<Vector3Int, Chunk> GetChunksInBounds(BoundsInt chunkBounds)
+        /// <param name="chunkPosition">The chunk position at which to unload.</param>
+        /// <param name="requester">The ChunkLoader asking </param>
+        public void RequestChunkUnLoading(Vector3Int chunkPosition, ChunkLoader requester)
         {
-            Dictionary<Vector3Int, Chunk> data = new Dictionary<Vector3Int, Chunk>();
-            foreach (Vector3Int chunkPosition in chunkBounds.allPositionsWithin)
-            {
-                // Get the chunk at the given position
-                Chunk chunk = GetOrCreateChunk(chunkPosition);
+            RequestChunkUnLoading(new List<Vector3Int>{ chunkPosition }, requester);
+        }
 
-                // If the chunk isn't empty, add it to the list
-                if (!chunk.IsEmpty()) data.Add(chunkPosition, chunk);
+
+        /// <summary>
+        ///     Request the unloading of the chunk at the given position.
+        /// </summary>
+        /// <param name="chunkPositions">The chunk positions at which to unload.</param>
+        /// <param name="requester">The ChunkLoader that requested to unload this chunk.</param>
+        public void RequestChunkUnLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        {
+            List<Chunk> chunksToSave = new List<Chunk>();
+
+            foreach (Vector3Int chunkPosition in chunkPositions)
+            {
+                if (!chunkLoadRequests[chunkPosition].Exists(loader => loader == requester))
+                {
+                    Debug.LogError($"Given {requester} never requested for chunk loading at {chunkPosition}.");
+                    continue;
+                }
+
+                chunkLoadRequests[chunkPosition].Remove(requester);
+
+                // If that Chunk is no longer needed
+                if (chunkLoadRequests[chunkPosition].Count == 0)
+                {
+                    // Add the chunk to be saved
+                    if (chunks[chunkPosition].IsDirty)
+                        chunksToSave.Add(chunks[chunkPosition]);
+                    else
+                        chunks[chunkPosition].Clear(false);
+
+                    // Remove that chunkPosition from all records/dictionaries
+                    chunks.Remove(chunkPosition);
+                    chunkLoadRequests.Remove(chunkPosition);
+                }
             }
 
-            return data;
+            // Save all of the chunks in the chunksToSave List
+            if (chunksToSave.Count > 0)
+            {
+                WorldManager.SaveChunks(chunksToSave, worldInfo);
+                // Clear them once saved
+                foreach (Chunk chunk in chunksToSave) chunk.Clear(false);
+            }
         }
 
         /// <summary>
@@ -239,11 +233,13 @@ namespace Pandawan.Islands.Tilemaps
             );
         }
 
+        // TODO: Refactor so I don't have to pass in a loader (aka find another way to make the whole "loader" system)
         /// <summary>
         ///     Get, Load, or Create a chunk at the given position.
         /// </summary>
         /// <param name="chunkPosition">The chunk position.</param>
-        private Chunk GetOrCreateChunk(Vector3Int chunkPosition)
+        /// <param name="loader">The loader that asked to get this chunk.</param>
+        private Chunk GetOrCreateChunk(Vector3Int chunkPosition, ChunkLoader loader = null)
         {
             // If it doesn't exist, create a new one
             if (!chunks.ContainsKey(chunkPosition))
@@ -275,9 +271,12 @@ namespace Pandawan.Islands.Tilemaps
                 }
             }
 
-            if (chunkRequestTime.ContainsKey(chunkPosition))
-                chunkRequestTime[chunkPosition] = 0;
-            else chunkRequestTime.Add(chunkPosition, 0);
+            // Add the loader to the chunkLoadRequests
+            if (chunkLoadRequests.ContainsKey(chunkPosition))
+                chunkLoadRequests[chunkPosition].Add(loader);
+            else
+                chunkLoadRequests.Add(chunkPosition, new List<ChunkLoader> {loader});
+
 
             return chunks[chunkPosition];
         }
@@ -335,8 +334,6 @@ namespace Pandawan.Islands.Tilemaps
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
             Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
-
-            Debug.Log($"Setting tile {tilePosition} in chunk {chunk.position}");
 
             chunk.SetTileAt(tilePosition, id);
         }
