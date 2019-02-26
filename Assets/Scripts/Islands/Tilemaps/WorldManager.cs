@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using Pandawan.Islands.Other;
@@ -13,6 +14,7 @@ namespace Pandawan.Islands.Tilemaps
     public static class WorldManager
     {
         // TODO: Optimize this? Check if possible to import multiple tiles at once? Or maybe make it so that the Chunk doesn't "SET" the tilemap again.
+        // TODO: Perhaps find way to make it so it doesn't set the chunk as Dirty?
         /// <summary>
         ///     Imports all of the tiles in the tilemap into the World
         /// </summary>
@@ -21,34 +23,103 @@ namespace Pandawan.Islands.Tilemaps
         public static void ImportTilemap(Tilemap tilemap, World world)
         {
             foreach (Vector3Int pos in tilemap.cellBounds.allPositionsWithin)
-            {
                 if (tilemap.HasTile(pos))
-                {
                     world.SetTileAt(pos, tilemap.GetTile<TileBase>(pos).name);
+        }
+
+        #region World 
+
+        public static void LoadWorld(string id, World world)
+        {
+            WorldInfo info = LoadWorldInfo(id);
+            world.SetWorldInfo(info);
+
+            // TODO: Do other World Loading Steps
+        }
+
+
+        public static void LoadWorldAt(string savePath, World world)
+        {
+            WorldInfo info = LoadWorldInfoAt(savePath);
+            world.SetWorldInfo(info);
+
+            // TODO: Do other World Loading Steps
+        }
+
+        public static void SaveWorld(World world)
+        {
+            WorldInfo info = world.GetWorldInfo();
+
+            // Save the world info
+            SaveWorldInfo(info);
+
+            // Save all the dirty chunks
+            SaveChunks(world.GetDirtyChunks(), info);
+        }
+
+        public static void SaveWorldAt(World world, string savePath)
+        {
+            WorldInfo info = world.GetWorldInfo();
+
+            SaveWorldInfoAt(info, savePath);
+
+            SaveChunksAt(world.GetDirtyChunks(), savePath);
+        }
+
+        #endregion
+
+        #region WorldInfo Load
+
+        public static WorldInfo LoadWorldInfo(string id)
+        {
+            string savePath = GetWorldSavePath(id);
+            return LoadWorldInfoAt(savePath);
+        }
+
+        public static WorldInfo LoadWorldInfoAt(string savePath)
+        {
+            // Check that the World's Directory/Save exists
+            if (!Directory.Exists(savePath))
+            {
+                Debug.LogError($"Could not load world at \"{savePath}\". It does not exist.");
+                return new WorldInfo("");
+            }
+
+            IFormatter formatter = GetBinaryFormatter();
+
+            WorldInfo info = new WorldInfo("");
+
+            // Read the WorldInfo file
+            string worldInfoPath = Path.Combine(savePath, "world.dat");
+            try
+            {
+                using (Stream stream =
+                    new FileStream(worldInfoPath, FileMode.Open, FileAccess.Read))
+                {
+                    info = (WorldInfo) formatter.Deserialize(stream);
+                    Debug.Log($"Found valid world at \"{savePath}\".");
                 }
             }
+            catch (IOException e)
+            {
+                Debug.LogError($"Error while loading WorldInfo at {worldInfoPath}. {e}");
+            }
+
+            return info;
         }
 
-        /// <summary>
-        ///     Save the given world to the file system.
-        /// </summary>
-        /// <param name="world">The world to save.</param>
-        public static void Save(World world)
+        #endregion
+
+        #region Chunk Save
+
+        public static void SaveChunks(List<Chunk> chunks, WorldInfo worldInfo)
         {
-            string savePath = GetWorldSavePath(world.GetWorldInfo().GetId());
-            Save(world, savePath);
+            string savePath = GetWorldSavePath(worldInfo.GetId());
+            SaveChunksAt(chunks, savePath);
         }
 
-        // TODO: Standardize the error messages
-        // TODO: Find a way to make this work on separate threads
-        /// <summary>
-        ///     Save the given world to the file system.
-        /// </summary>
-        /// <param name="world">The world to save.</param>
-        /// <param name="savePath">The path at which to save the world.</param>
-        public static void Save(World world, string savePath)
+        public static void SaveChunksAt(List<Chunk> chunks, string savePath)
         {
-            List<Chunk> chunks = world.GetDirtyChunks();
             string chunksPath = Path.Combine(savePath, "chunks");
 
             // Check that the save path already exists
@@ -65,21 +136,6 @@ namespace Pandawan.Islands.Tilemaps
 
             IFormatter formatter = GetBinaryFormatter();
 
-            // Save the world info
-            string worldInfoPath = Path.Combine(savePath, "world.dat");
-            try
-            {
-                using (Stream stream =
-                    new FileStream(worldInfoPath, FileMode.Create, FileAccess.ReadWrite))
-                {
-                    formatter.Serialize(stream, world.GetWorldInfo());
-                }
-            }
-            catch (IOException e)
-            {
-                Debug.LogError($"Error while saving WorldInfo for {world} at \"{worldInfoPath}\". {e}");
-            }
-
             // Save all the chunk data
             foreach (Chunk chunk in chunks)
             {
@@ -95,48 +151,59 @@ namespace Pandawan.Islands.Tilemaps
                 }
                 catch (IOException e)
                 {
-                    Debug.LogError($"Error while saving {chunk} for {world} at \"{chunkPath}\". {e}");
+                    Debug.LogError($"Error while saving {chunk} at \"{chunkPath}\". {e}");
                 }
             }
 
-            Debug.Log($"Successfully saved {world} at \"{savePath}\".");
+            Debug.Log($"Successfully saved chunk at \"{savePath}\".");
         }
 
-        /// <summary>
-        ///     Load a world with the specified world id.
-        /// </summary>
-        /// <param name="worldId">The world id to look for.</param>
-        /// <param name="world">The world to apply the changes to.</param>
-        public static void Load(string worldId, World world)
-        {
-            string savePath = GetWorldSavePath(worldId);
+        #endregion
 
+        #region Chunk Load
+        // TODO: Make <summary>s for every method here
+
+        /// <summary>
+        /// Whether or not the chunks with given position exist.
+        /// </summary>
+        /// <param name="chunkPos">The position to check.</param>
+        /// <param name="worldInfo">The world to check in.</param>
+        /// <returns>Returns true if ALL chunks exist.</returns>
+        public static bool ChunksExist(List<Vector3Int> chunkPos, WorldInfo worldInfo)
+        {
+            string savePath = GetWorldSavePath(worldInfo.GetId());
+
+            string chunksPath = Path.Combine(savePath, "chunks");
+
+            // Get save path for each Chunk position
+            string[] chunkPaths = chunkPos.Select(pos => Path.Combine(chunksPath,
+                    $"{Chunk.GetIdForPosition(pos)}.dat"))
+                .ToArray();
+
+            foreach (string chunkPath in chunkPaths)
+            {
+                if (!File.Exists(chunkPath)) return false;
+            }
+
+            return true;
+        }
+
+        public static List<Chunk> LoadChunk(List<Vector3Int> chunkPos, WorldInfo worldInfo)
+        {
+            string savePath = GetWorldSavePath(worldInfo.GetId());
+            return LoadChunkAt(chunkPos, savePath);
+        }
+
+        public static List<Chunk> LoadChunkAt(List<Vector3Int> chunkPos, string savePath)
+        {
             // Check that the World's Directory/Save exists
             if (!Directory.Exists(savePath))
             {
-                Debug.LogError($"Could not load world {world} at \"{savePath}\". It does not exist.");
-                return;
+                Debug.LogError($"Could not load chunks at \"{savePath}\". It does not exist.");
+                return null;
             }
 
             IFormatter formatter = GetBinaryFormatter();
-
-            // Read the WorldInfo file
-            string worldInfoPath = Path.Combine(savePath, "world.dat");
-            try
-            {
-                using (Stream stream =
-                    new FileStream(worldInfoPath, FileMode.Open, FileAccess.Read))
-                {
-                    WorldInfo info = (WorldInfo) formatter.Deserialize(stream);
-                    world.SetWorldInfo(info);
-                    Debug.Log($"Found valid world at \"{savePath}\".");
-                }
-            }
-            catch (IOException e)
-            {
-                Debug.LogError($"Error while loading WorldInfo for {world} at {worldInfoPath}. {e}");
-                return;
-            }
 
             string chunksPath = Path.Combine(savePath, "chunks");
 
@@ -145,24 +212,74 @@ namespace Pandawan.Islands.Tilemaps
             {
                 List<Chunk> chunks = new List<Chunk>();
 
-                // Get all file names in the chunks directory
-                string[] chunkPaths = Directory.GetFiles(chunksPath);
+                // Get save path for each Chunk position
+                string[] chunkPaths = chunkPos.Select(pos => Path.Combine(chunksPath,
+                        $"{Chunk.GetIdForPosition(pos)}.dat"))
+                    .ToArray();
                 foreach (string chunkPath in chunkPaths)
                     try
                     {
                         using (Stream stream = new FileStream(chunkPath, FileMode.Open, FileAccess.Read))
                         {
-                            chunks.Add((Chunk) formatter.Deserialize(stream));
+                            chunks.Add((Chunk)formatter.Deserialize(stream));
                         }
                     }
                     catch (IOException e)
                     {
-                        Debug.LogError($"Error while loading chunk for {world} at \"{chunkPath}\". {e}");
+                        Debug.LogError($"Error while loading chunks at \"{chunkPath}\". {e}");
                     }
 
-                world.LoadChunks(chunks);
+                return chunks;
+            }
+
+            return null;
+        }
+
+        #endregion
+
+        #region WorldInfo Save
+
+        public static void SaveWorldInfo(WorldInfo worldInfo)
+        {
+            string savePath = GetWorldSavePath(worldInfo.GetId());
+            SaveWorldInfoAt(worldInfo, savePath);
+        }
+
+        public static void SaveWorldInfoAt(WorldInfo worldInfo, string savePath)
+        {
+            // Check that the save path already exists
+            try
+            {
+                // Create a Directory if it doesn't exist
+                Directory.CreateDirectory(savePath);
+            }
+            catch (IOException e)
+            {
+                Debug.LogError($"Error while opening save path \"{savePath}\". {e}");
+                return;
+            }
+
+            IFormatter formatter = GetBinaryFormatter();
+
+            // Save the world info
+            string worldInfoPath = Path.Combine(savePath, "world.dat");
+            try
+            {
+                using (Stream stream =
+                    new FileStream(worldInfoPath, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    formatter.Serialize(stream, worldInfo);
+                }
+            }
+            catch (IOException e)
+            {
+                Debug.LogError($"Error while saving WorldInfo at \"{worldInfoPath}\". {e}");
             }
         }
+
+        #endregion
+
+        #region Helper
 
         /// <summary>
         ///     Whether or not there exists a World with the given Id
@@ -174,8 +291,6 @@ namespace Pandawan.Islands.Tilemaps
             string savePath = GetWorldSavePath(worldId);
             return Directory.Exists(savePath);
         }
-
-        #region Helper
 
         /// <summary>
         ///     Get a Binary Formatter that is customized to serialize World data.

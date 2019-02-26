@@ -101,7 +101,7 @@ namespace Pandawan.Islands.Editor
                 string path = EditorUtility.SaveFolderPanel("Save Tilemap", "", world.GetWorldInfo().GetId());
                 
                 // Try saving the world
-                WorldManager.Save(world, path);
+                WorldManager.SaveWorldAt(world, path);
             }
         }
     }

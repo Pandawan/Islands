@@ -25,15 +25,20 @@ namespace Pandawan.Islands.Tilemaps
             new Dictionary<ChunkDataKey, ChunkDataValue>();
 
         // Size of a chunk
-        [NonSerialized] private readonly BoundsInt chunkBounds;
+        [NonSerialized] private BoundsInt chunkBounds;
 
         internal Dictionary<ChunkDataKey, ChunkDataValue> PositionProperties => positionProperties;
 
-        [NonSerialized] private readonly Chunk chunk;
+        [NonSerialized] private Chunk chunk;
 
         #region Constructor
 
         public ChunkData(Chunk chunk, BoundsInt chunkBounds)
+        {
+            Setup(chunk, chunkBounds);
+        }
+
+        public void Setup(Chunk chunk, BoundsInt chunkBounds)
         {
             this.chunk = chunk;
             this.chunkBounds = chunkBounds;
@@ -286,11 +291,9 @@ namespace Pandawan.Islands.Tilemaps
         {
             // Check that this globalPosition is valid for this ChunkData
             if (!chunk.IsValidPosition(globalPosition))
-                Debug.LogError($"Position {globalPosition} is not valid for Chunk at {chunkBounds.position}");
+                Debug.LogError($"Position {globalPosition} is not valid for ChunkData at {chunkBounds.position}");
 
-            return new Vector3Int((globalPosition.x % chunkBounds.size.x + chunkBounds.size.x) % chunkBounds.size.x,
-                (globalPosition.y % chunkBounds.size.y + chunkBounds.size.y) % chunkBounds.size.y,
-                (globalPosition.z % chunkBounds.size.z + chunkBounds.size.z) % chunkBounds.size.z);
+            return chunk.GlobalToLocalPosition(globalPosition);
         }
         
         #endregion

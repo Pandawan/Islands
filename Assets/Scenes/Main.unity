@@ -241,7 +241,6 @@ GameObject:
   - component: {fileID: 948457039}
   - component: {fileID: 948457037}
   - component: {fileID: 948457038}
-  - component: {fileID: 948457041}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -265,6 +264,7 @@ MonoBehaviour:
     name: world
   chunkSize: {x: 32, y: 32, z: 32}
   tilemap: {fileID: 1171127332}
+  chunkKeepAliveDelay: 5
 --- !u!114 &948457038
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -272,15 +272,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 948457036}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a41b7b9def867214a8c45062964d8e5d, type: 3}
+  m_Script: {fileID: 11500000, guid: c93a9ffc773f407e84b023e339b1a943, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  type: 1
-  islandSize:
-    m_Position: {x: -8, y: -8, z: -8}
-    m_Size: {x: 16, y: 16, z: 16}
+  tilemap: {fileID: 1171127332}
 --- !u!156049354 &948457039
 Grid:
   m_ObjectHideFlags: 0
@@ -308,19 +305,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &948457041
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 948457036}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c93a9ffc773f407e84b023e339b1a943, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tilemap: {fileID: 1171127332}
 --- !u!1 &1171127331
 GameObject:
   m_ObjectHideFlags: 0
@@ -1785,6 +1769,7 @@ GameObject:
   - component: {fileID: 1876216835}
   - component: {fileID: 1876216834}
   - component: {fileID: 1876216840}
+  - component: {fileID: 1876216841}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -1946,6 +1931,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f88f263c9b2443795026b48b5aeb5a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1876216841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1876216833}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0503331bcce11a145839cf155cc0f590, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showGizmos: 1
+  useChunkCoordinates: 1
+  relativeChunkBounds:
+    m_Position: {x: -1, y: -1, z: -1}
+    m_Size: {x: 2, y: 2, z: 2}
+  relativeTileBounds:
+    m_Position: {x: -8, y: -8, z: -8}
+    m_Size: {x: 16, y: 16, z: 16}
 --- !u!1 &2068412386
 GameObject:
   m_ObjectHideFlags: 0

@@ -85,6 +85,9 @@ namespace Pandawan.Islands.Tilemaps
             if (tiles == null) tiles = new string[size.x * size.y * size.z];
             // If ChunkData doesn't exist, create it
             if (chunkData == null) chunkData = new ChunkData(this, new BoundsInt(position, size));
+            // Otherwise, set it up (because some fields are not serialized
+            else chunkData.Setup(this, new BoundsInt(position, size));
+            IsDirty = false;
         }
 
         /// <summary>
@@ -124,6 +127,11 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <returns>The chunk's id.</returns>
         public string GetId()
+        {
+            return GetIdForPosition(position);
+        }
+
+        public static string GetIdForPosition(Vector3Int position)
         {
             return $"chunk_{position.x}_{position.y}_{position.z}";
         }
@@ -296,7 +304,7 @@ namespace Pandawan.Islands.Tilemaps
             IsDirty = true;
 
             // Reset the ChunkData for this position
-            chunkData.ErasePositionProperty(localPosition);
+            chunkData.ErasePositionProperty(tilePosition);
         }
 
         /// <summary>
@@ -320,7 +328,25 @@ namespace Pandawan.Islands.Tilemaps
             tilemap.SetTile(tilePosition, null);
 
             // Reset the ChunkData for this position
-            chunkData.ErasePositionProperty(localPosition);
+            chunkData.ErasePositionProperty(tilePosition);
+        }
+
+        public void Clear(bool setDirty)
+        {
+            BoundsInt bounds = new BoundsInt(position * size, size);
+            for (int x = bounds.xMin; x < bounds.xMax; x++)
+            for (int y = bounds.yMin; y < bounds.yMax; y++)
+            for (int z = bounds.zMin; z < bounds.zMax; z++)
+            {
+                Vector3Int tilePosition = new Vector3Int(x, y, z);
+                tilemap.SetTile(tilePosition, null);
+                tiles = null;
+            }
+
+            chunkData.Reset();
+
+            IsDirty = setDirty;
+            // TODO: Should I Object.Destroy here?
         }
 
         #endregion
