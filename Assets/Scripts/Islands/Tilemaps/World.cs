@@ -28,6 +28,8 @@ namespace Pandawan.Islands.Tilemaps
 
         public event WorldEvent GenerationEvent;
 
+        #region World Lifecycle
+
         private void Awake()
         {
             if (instance == null)
@@ -63,31 +65,6 @@ namespace Pandawan.Islands.Tilemaps
             }
         }
 
-        /// <summary>
-        ///     Set the World's WorldInfo.
-        /// </summary>
-        /// <param name="info">WorldInfo object to set to.</param>
-        public void SetWorldInfo(WorldInfo info)
-        {
-            worldInfo = info;
-        }
-
-        /// <summary>
-        ///     Get the World's WorldInfo.
-        /// </summary>
-        /// <returns>The World Info object.</returns>
-        public WorldInfo GetWorldInfo()
-        {
-            return worldInfo;
-        }
-
-        public override string ToString()
-        {
-            return $"World {worldInfo.name}";
-        }
-
-        #region World Lifecycle
-
         private void DiscardOldChunks()
         {
             // TODO: Clean this up so I don't have to use null loaders
@@ -104,7 +81,7 @@ namespace Pandawan.Islands.Tilemaps
 
         #endregion
 
-        #region Chunk Loading & Saving
+        #region Chunk Loading
 
         /// <summary>
         ///     Request the loading of the chunk at the given position.
@@ -113,10 +90,8 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="requester">The ChunkLoader that requested to load this chunk.</param>
         public void RequestChunkLoading(Vector3Int chunkPosition, ChunkLoader requester)
         {
-            // Simply calling GetOrCreate works
-            GetOrCreateChunk(chunkPosition, requester);
+            RequestChunkLoading(new List<Vector3Int> {chunkPosition}, requester);
         }
-
 
         /// <summary>
         ///     Request the loading of the chunk within the given bounds.
@@ -128,9 +103,8 @@ namespace Pandawan.Islands.Tilemaps
             // TODO: Optimize this so it loads multiple chunks at once (using the same FileStream in WorldManager)
             // Load every chunkPosition
             foreach (Vector3Int chunkPosition in chunkPositions)
-            {
+                // Simply calling GetOrCreateChunk works
                 GetOrCreateChunk(chunkPosition, requester);
-            }
         }
 
         /// <summary>
@@ -140,9 +114,8 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="requester">The ChunkLoader asking </param>
         public void RequestChunkUnLoading(Vector3Int chunkPosition, ChunkLoader requester)
         {
-            RequestChunkUnLoading(new List<Vector3Int>{ chunkPosition }, requester);
+            RequestChunkUnLoading(new List<Vector3Int> {chunkPosition}, requester);
         }
-
 
         /// <summary>
         ///     Request the unloading of the chunk at the given position.
@@ -166,7 +139,7 @@ namespace Pandawan.Islands.Tilemaps
                 // If that Chunk is no longer needed
                 if (chunkLoadRequests[chunkPosition].Count == 0)
                 {
-                    // Add the chunk to be saved
+                    // Add the chunk to be saved if they have been modified
                     if (chunks[chunkPosition].IsDirty)
                         chunksToSave.Add(chunks[chunkPosition]);
                     else
@@ -201,38 +174,6 @@ namespace Pandawan.Islands.Tilemaps
 
         #region Chunk Abstraction
 
-        /// <summary>
-        ///     Convert the given Tile Position to its corresponding Chunk's position
-        /// </summary>
-        /// <param name="position">The position of the tile</param>
-        /// <returns>The position of the chunk</returns>
-        public Vector3Int GetChunkPositionForTile(Vector3Int position)
-        {
-            return new Vector3Int(
-                position.x / (position.x < 0 ? chunkSize.x + 1 : chunkSize.x) + (position.x < 0 ? -1 : 0),
-                position.y / (position.y < 0 ? chunkSize.y + 1 : chunkSize.y) + (position.y < 0 ? -1 : 0),
-                position.z / (position.z < 0 ? chunkSize.z + 1 : chunkSize.z) + (position.z < 0 ? -1 : 0)
-            );
-        }
-
-
-        /// <summary>
-        ///     Convert the given Tile Position to its corresponding Chunk's position
-        /// </summary>
-        /// <param name="position">The position of the tile</param>
-        /// <returns>The position of the chunk</returns>
-        public Vector3Int GetChunkPositionForTileCeil(Vector3Int position)
-        {
-            return new Vector3Int(
-                Mathf.CeilToInt((float) position.x / (position.x < 0 ? chunkSize.x + 1 : chunkSize.x) +
-                                (position.x < 0 ? -1 : 0)),
-                Mathf.CeilToInt((float) position.y / (position.y < 0 ? chunkSize.y + 1 : chunkSize.y) +
-                                (position.y < 0 ? -1 : 0)),
-                Mathf.CeilToInt((float) position.z / (position.z < 0 ? chunkSize.z + 1 : chunkSize.z) +
-                                (position.z < 0 ? -1 : 0))
-            );
-        }
-
         // TODO: Refactor so I don't have to pass in a loader (aka find another way to make the whole "loader" system)
         /// <summary>
         ///     Get, Load, or Create a chunk at the given position.
@@ -258,7 +199,6 @@ namespace Pandawan.Islands.Tilemaps
                         // Add & Load new chunk into tilemap
                         chunks.Add(chunkPosition, chunk[0]);
                         chunk[0].Setup(chunkSize, tilemap);
-                        chunk[0].Load();
                     }
                     else
                     {
@@ -299,8 +239,13 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="tilePosition">The Tile position to use.</param>
         public ChunkData GetChunkDataForTile(Vector3Int tilePosition)
         {
-            return GetChunkData(GetChunkPositionForTile(tilePosition));
+            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            return GetChunkData(chunkPosition);
         }
+
+        #endregion
+
+        #region Tile Modification
 
         /// <summary>
         ///     Whether or not the given tile position is empty/has no tile.
@@ -321,7 +266,8 @@ namespace Pandawan.Islands.Tilemaps
         public BasicTile GetTileAt(Vector3Int tilePosition)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
+            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Chunk chunk = GetOrCreateChunk(chunkPosition);
             return chunk.GetTileAt(tilePosition);
         }
 
@@ -333,7 +279,8 @@ namespace Pandawan.Islands.Tilemaps
         public void SetTileAt(Vector3Int tilePosition, string id)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
+            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Chunk chunk = GetOrCreateChunk(chunkPosition);
 
             chunk.SetTileAt(tilePosition, id);
         }
@@ -346,7 +293,8 @@ namespace Pandawan.Islands.Tilemaps
         public void SetTileAt(Vector3Int tilePosition, BasicTile tile)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
+            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Chunk chunk = GetOrCreateChunk(chunkPosition);
 
             chunk.SetTileAt(tilePosition, tile);
         }
@@ -358,9 +306,48 @@ namespace Pandawan.Islands.Tilemaps
         public void RemoveTileAt(Vector3Int tilePosition)
         {
             // TODO: Might want to make it so that removing and getting a tile doesn't CREATE a new chunk if none exists (and if there is no loadable chunk)
-            Chunk chunk = GetOrCreateChunk(GetChunkPositionForTile(tilePosition));
+            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Chunk chunk = GetOrCreateChunk(chunkPosition);
 
             chunk.RemoveTileAt(tilePosition);
+        }
+
+        #endregion
+
+        #region World Info
+
+        /// <summary>
+        ///     Set the World's WorldInfo.
+        /// </summary>
+        /// <param name="info">WorldInfo object to set to.</param>
+        public void SetWorldInfo(WorldInfo info)
+        {
+            worldInfo = info;
+        }
+
+        /// <summary>
+        ///     Get the World's WorldInfo.
+        /// </summary>
+        public WorldInfo GetWorldInfo()
+        {
+            return worldInfo;
+        }
+
+        #endregion
+
+        #region Accessors & Overrides
+
+        /// <summary>
+        ///     Get the World's ChunkSize.
+        /// </summary>
+        public Vector3Int GetChunkSize()
+        {
+            return chunkSize;
+        }
+
+        public override string ToString()
+        {
+            return $"World {worldInfo.name}";
         }
 
         #endregion

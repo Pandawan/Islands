@@ -24,12 +24,12 @@ namespace Pandawan.Islands.Tilemaps
         [SerializeField] private readonly Dictionary<ChunkDataKey, ChunkDataValue> positionProperties =
             new Dictionary<ChunkDataKey, ChunkDataValue>();
 
+        [NonSerialized] private Chunk chunk;
+
         // Size of a chunk
         [NonSerialized] private BoundsInt chunkBounds;
 
         internal Dictionary<ChunkDataKey, ChunkDataValue> PositionProperties => positionProperties;
-
-        [NonSerialized] private Chunk chunk;
 
         #region Constructor
 
@@ -38,10 +38,10 @@ namespace Pandawan.Islands.Tilemaps
             Setup(chunk, chunkBounds);
         }
 
-        public void Setup(Chunk chunk, BoundsInt chunkBounds)
+        public void Setup(Chunk _chunk, BoundsInt _chunkBounds)
         {
-            this.chunk = chunk;
-            this.chunkBounds = chunkBounds;
+            chunk = _chunk;
+            chunkBounds = _chunkBounds;
         }
 
         #endregion
@@ -88,7 +88,7 @@ namespace Pandawan.Islands.Tilemaps
         {
             if (positionProperty != null)
             {
-                Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+                Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
                 ChunkDataKey positionKey;
                 positionKey.position = localPosition;
@@ -112,7 +112,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="name">The name of the property to erase.</param>
         public bool ErasePositionProperty(Vector3Int globalPosition, string name)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             ChunkDataKey positionKey;
             positionKey.position = localPosition;
@@ -126,7 +126,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="globalPosition">The position of the property to erase.</param>
         public bool ErasePositionProperty(Vector3Int globalPosition)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
             return positionProperties.RemoveAll((key, value) => key.position == localPosition);
         }
 
@@ -136,7 +136,7 @@ namespace Pandawan.Islands.Tilemaps
 
         public T GetPositionProperty<T>(Vector3Int globalPosition, string name, T defaultValue) where T : Object
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             ChunkDataKey positionKey;
             positionKey.position = localPosition;
@@ -155,7 +155,7 @@ namespace Pandawan.Islands.Tilemaps
 
         public int GetPositionProperty(Vector3Int globalPosition, string name, int defaultValue)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             ChunkDataKey positionKey;
             positionKey.position = localPosition;
@@ -174,7 +174,7 @@ namespace Pandawan.Islands.Tilemaps
 
         public string GetPositionProperty(Vector3Int globalPosition, string name, string defaultValue)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             ChunkDataKey positionKey;
             positionKey.position = localPosition;
@@ -193,7 +193,7 @@ namespace Pandawan.Islands.Tilemaps
 
         public float GetPositionProperty(Vector3Int globalPosition, string name, float defaultValue)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             ChunkDataKey positionKey;
             positionKey.position = localPosition;
@@ -212,7 +212,7 @@ namespace Pandawan.Islands.Tilemaps
 
         public double GetPositionProperty(Vector3Int globalPosition, string name, double defaultValue)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             ChunkDataKey positionKey;
             positionKey.position = localPosition;
@@ -231,7 +231,7 @@ namespace Pandawan.Islands.Tilemaps
 
         public Color GetPositionProperty(Vector3Int globalPosition, string name, Color defaultValue)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             ChunkDataKey positionKey;
             positionKey.position = localPosition;
@@ -254,7 +254,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="globalPosition">The position at which to get the properties.</param>
         public Dictionary<ChunkDataKey, ChunkDataValue> GetAllPropertiesAt(Vector3Int globalPosition)
         {
-            Vector3Int localPosition = GlobalToLocalPosition(globalPosition);
+            Vector3Int localPosition = TileToLocalChunkPosition(globalPosition);
 
             return positionProperties.Keys.ToList().FindAll(x => x.position == localPosition)
                 .ToDictionary(key => key, key => positionProperties[key]);
@@ -283,19 +283,19 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        ///     Convert a World/Tile Position to a Local/Chunk Position
+        ///     Convert the given tile position to a chunk's local position (from 0 to chunkSize - 1).
         /// </summary>
-        /// <param name="globalPosition">The Global Position to convert.</param>
-        /// <returns>The converted Local Position.</returns>
-        public Vector3Int GlobalToLocalPosition(Vector3Int globalPosition)
+        /// <param name="tilePosition">The tile position to convert from.</param>
+        /// <returns>The resulting local chunk position.</returns>
+        public Vector3Int TileToLocalChunkPosition(Vector3Int tilePosition)
         {
-            // Check that this globalPosition is valid for this ChunkData
-            if (!chunk.IsValidPosition(globalPosition))
-                Debug.LogError($"Position {globalPosition} is not valid for ChunkData at {chunkBounds.position}");
+            // Check that this tilePosition is valid for this ChunkData
+            if (!chunk.IsValidPosition(tilePosition))
+                Debug.LogError($"Position {tilePosition} is not valid for ChunkData at {chunkBounds.position}");
 
-            return chunk.GlobalToLocalPosition(globalPosition);
+            return PositionUtilities.TileToChunkPosition(tilePosition, chunkBounds.size);
         }
-        
+
         #endregion
 
         #region Structs

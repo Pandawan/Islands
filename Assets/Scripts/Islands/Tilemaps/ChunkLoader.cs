@@ -31,10 +31,7 @@ namespace Pandawan.Islands.Tilemaps
         private void LoadChunks()
         {
             // Get all the chunks that are within the bounds
-            BoundsInt absoluteChunkBounds =
-                ChunkToAbsoluteBounds(useChunkCoordinates
-                    ? relativeChunkBounds
-                    : TileToChunkBounds(relativeTileBounds));
+            BoundsInt absoluteChunkBounds = GetAbsoluteBounds();
 
             List<Vector3Int> newChunksList = absoluteChunkBounds.ToList();
 
@@ -62,11 +59,7 @@ namespace Pandawan.Islands.Tilemaps
                     Gizmos.DrawWireCube(relativeTileBounds.center, relativeTileBounds.size);
                 }
 
-                BoundsInt absoluteChunkBounds =
-                    ChunkToAbsoluteBounds(useChunkCoordinates
-                        ? relativeChunkBounds
-                        : TileToChunkBounds(relativeTileBounds));
-
+                BoundsInt absoluteChunkBounds = GetAbsoluteBounds();
                 Gizmos.color = Color.blue;
                 Gizmos.DrawWireCube(absoluteChunkBounds.center * 32, absoluteChunkBounds.size * 32);
             }
@@ -74,26 +67,22 @@ namespace Pandawan.Islands.Tilemaps
 
         #region Position Helpers
 
-        // TODO: Move these methods to central "position" converting class. Just one major place with all the position manipulation.
-        // This just converts a TileBound to a ChunkBound (including those that are partially contained)
-        private BoundsInt TileToChunkBounds(BoundsInt tileBounds)
+        /// <summary>
+        ///     Get the Absolute Chunk Boundaries (using either chunk or tile boundaries)
+        /// </summary>
+        private BoundsInt GetAbsoluteBounds()
         {
-            // I want this to change from a Tile Position to a Chunk Position, accounting for every tile
-            // If one tile is in a different chunk, also include that chunk
-            Vector3Int min = World.instance.GetChunkPositionForTile(tileBounds.min);
-            Vector3Int max = World.instance.GetChunkPositionForTileCeil(tileBounds.max);
-            Vector3Int size = max - min;
-
-            BoundsInt bounds = new BoundsInt(min.x, min.y, min.z, size.x, size.y, size.z);
-
-            return bounds;
+            return ChunkToAbsoluteBounds(useChunkCoordinates
+                ? relativeChunkBounds
+                : PositionUtilities.TileToChunkBounds(relativeTileBounds, World.instance.GetChunkSize()));
         }
 
         // This converts the relative chunk bounds to absolute chunk bounds by adding in the current position (in Chunks)
         private BoundsInt ChunkToAbsoluteBounds(BoundsInt chunkBounds)
         {
             Vector3Int currentPosition =
-                World.instance.GetChunkPositionForTile(Vector3Int.FloorToInt(transform.position));
+                PositionUtilities.TileToChunkPosition(Vector3Int.FloorToInt(transform.position),
+                    World.instance.GetChunkSize());
 
             BoundsInt absoluteChunkBounds = new BoundsInt(chunkBounds.position + currentPosition, chunkBounds.size);
 
