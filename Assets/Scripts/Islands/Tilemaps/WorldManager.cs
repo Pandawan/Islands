@@ -82,12 +82,12 @@ namespace Pandawan.Islands.Tilemaps
             if (!Directory.Exists(savePath))
             {
                 Debug.LogError($"Could not load world at \"{savePath}\". It does not exist.");
-                return new WorldInfo("");
+                return WorldInfo.Default;
             }
 
             IFormatter formatter = GetBinaryFormatter();
 
-            WorldInfo info = new WorldInfo("");
+            WorldInfo info = WorldInfo.Default;
 
             // Read the WorldInfo file
             string worldInfoPath = Path.Combine(savePath, "world.dat");
@@ -161,10 +161,11 @@ namespace Pandawan.Islands.Tilemaps
         #endregion
 
         #region Chunk Load
+
         // TODO: Make <summary>s for every method here
 
         /// <summary>
-        /// Whether or not the chunks with given position exist.
+        ///     Whether or not the chunks with given position exist.
         /// </summary>
         /// <param name="chunkPos">The position to check.</param>
         /// <param name="worldInfo">The world to check in.</param>
@@ -181,9 +182,8 @@ namespace Pandawan.Islands.Tilemaps
                 .ToArray();
 
             foreach (string chunkPath in chunkPaths)
-            {
-                if (!File.Exists(chunkPath)) return false;
-            }
+                if (!File.Exists(chunkPath))
+                    return false;
 
             return true;
         }
@@ -221,7 +221,7 @@ namespace Pandawan.Islands.Tilemaps
                     {
                         using (Stream stream = new FileStream(chunkPath, FileMode.Open, FileAccess.Read))
                         {
-                            chunks.Add((Chunk)formatter.Deserialize(stream));
+                            chunks.Add((Chunk) formatter.Deserialize(stream));
                         }
                     }
                     catch (IOException e)

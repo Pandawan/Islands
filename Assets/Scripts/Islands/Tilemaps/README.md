@@ -1,13 +1,25 @@
 # Tilemaps
 
-*Don't use the Tilemap directly, always use the World (Abstraction layer) to manipulate the tilemap.**
+*Don't use the Tilemap directly, always use the World (Abstraction layer) to manipulate the tilemap.*
 
+- [Tile Positions](#Tile-Positions)
 - [Abstraction Layer](#Abstraction-Layer)
 - [Tilemap](#Tilemap)
 - [GridInformation](#GridInformation)
 - [Tile Pivot and Collider](#Tile-Pivot-and-Collider)
 - [Tile Editor](#Tile-Editor)
 - [World Generation](#World-Generation)
+
+## Tile Positions
+
+### Tile Positions
+A position to identify tiles in the world where 1 = 1 tile.
+
+### Chunk Position
+A position to identify chunks where 1 = 1 chunk = [chunkSize] tiles.
+
+### Local Chunk Position
+A position to identify tiles inside a chunk. These are relative to the chunk's position. They go from 0 to [chunkSize].
 
 ## Abstraction Layer
 

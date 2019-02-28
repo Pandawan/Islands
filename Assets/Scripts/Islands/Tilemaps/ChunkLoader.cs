@@ -74,15 +74,14 @@ namespace Pandawan.Islands.Tilemaps
         {
             return ChunkToAbsoluteBounds(useChunkCoordinates
                 ? relativeChunkBounds
-                : PositionUtilities.TileToChunkBounds(relativeTileBounds, World.instance.GetChunkSize()));
+                : World.instance.TileToChunkBounds(relativeTileBounds));
         }
 
         // This converts the relative chunk bounds to absolute chunk bounds by adding in the current position (in Chunks)
         private BoundsInt ChunkToAbsoluteBounds(BoundsInt chunkBounds)
         {
             Vector3Int currentPosition =
-                PositionUtilities.TileToChunkPosition(Vector3Int.FloorToInt(transform.position),
-                    World.instance.GetChunkSize());
+                World.instance.TileToChunkPosition(Vector3Int.FloorToInt(transform.position));
 
             BoundsInt absoluteChunkBounds = new BoundsInt(chunkBounds.position + currentPosition, chunkBounds.size);
 

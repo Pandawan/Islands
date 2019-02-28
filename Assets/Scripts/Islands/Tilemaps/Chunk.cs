@@ -23,41 +23,10 @@ namespace Pandawan.Islands.Tilemaps
         [NonSerialized] private Vector3Int size;
 
         // Keep a reference to the tilemap
-        [NonSerialized] private Tilemap tilemap;
+        [NonSerialized] private Tilemap Tilemap;
 
         // Whether or not this Chunk is different from the saved one
         public bool IsDirty { get; protected set; }
-
-        /// <summary>
-        ///     Get the ChunkData object.
-        ///     Note: This will not check if the passed position is within chunk bounds.
-        /// </summary>
-        /// <returns></returns>
-        public ChunkData GetChunkData()
-        {
-            // TODO: Restrict access from ChunkData through custom methods rather than full access to ChunkData
-            return chunkData;
-        }
-
-        /// <summary>
-        ///     Get the Chunk Id.
-        ///     This is a FileSystem-safe id in snake_case.
-        /// </summary>
-        /// <returns>The chunk's id.</returns>
-        public string GetId()
-        {
-            return GetIdForPosition(position);
-        }
-
-        public static string GetIdForPosition(Vector3Int position)
-        {
-            return $"chunk_{position.x}_{position.y}_{position.z}";
-        }
-
-        public override string ToString()
-        {
-            return $"Chunk {position.ToString()}";
-        }
 
         #region Constructors & Setup
 
@@ -67,7 +36,7 @@ namespace Pandawan.Islands.Tilemaps
             chunkData = new ChunkData(this, new BoundsInt(position, size));
             this.position = position;
             this.size = size;
-            this.tilemap = tilemap;
+            Tilemap = tilemap;
             IsDirty = false;
         }
 
@@ -91,7 +60,7 @@ namespace Pandawan.Islands.Tilemaps
             // Apply the position
             position = bounds.position;
             size = bounds.size;
-            this.tilemap = tilemap;
+            Tilemap = tilemap;
             this.chunkData = chunkData;
             IsDirty = false;
         }
@@ -106,7 +75,7 @@ namespace Pandawan.Islands.Tilemaps
         {
             // Setup variables from defaults
             size = newSize;
-            tilemap = newTilemap;
+            Tilemap = newTilemap;
             // If tiles array doesn't exist, create it 
             if (tiles == null) tiles = new string[size.x * size.y * size.z];
             // If ChunkData doesn't exist, create it
@@ -130,13 +99,46 @@ namespace Pandawan.Islands.Tilemaps
             for (int index = 0; index < tiles.GetLength(0); index++)
             {
                 Vector3Int tilePosition =
-                    PositionUtilities.LocalChunkToTilePosition(IndexToPosition(index), position, size);
+                    LocalChunkToTilePosition(IndexToPosition(index));
                 string tileId = tiles[index];
                 if (!string.IsNullOrEmpty(tileId)) tilesToAdd.Add(tilePosition, TileDB.instance.GetTile(tileId));
             }
 
             // Set all of the tiles that aren't empty in the tilemap
-            tilemap.SetTiles(tilesToAdd.Keys.ToArray(), tilesToAdd.Values.ToArray());
+            Tilemap.SetTiles(tilesToAdd.Keys.ToArray(), tilesToAdd.Values.ToArray());
+        }
+
+        #endregion
+
+        #region Getters
+
+        /// <summary>
+        ///     Get the ChunkData object.
+        /// </summary>
+        /// <returns></returns>
+        public ChunkData GetChunkData()
+        {
+            return chunkData;
+        }
+
+        /// <summary>
+        ///     Get the Chunk Id.
+        ///     This is a FileSystem-safe id in snake_case.
+        /// </summary>
+        /// <returns>The chunk's id.</returns>
+        public string GetId()
+        {
+            return GetIdForPosition(position);
+        }
+
+        public static string GetIdForPosition(Vector3Int position)
+        {
+            return $"chunk_{position.x}_{position.y}_{position.z}";
+        }
+
+        public override string ToString()
+        {
+            return $"Chunk {position.ToString()}";
         }
 
         #endregion
@@ -156,7 +158,7 @@ namespace Pandawan.Islands.Tilemaps
                 return null;
             }
 
-            return tilemap.GetTile(tilePosition) as BasicTile;
+            return Tilemap.GetTile(tilePosition) as BasicTile;
         }
 
         /// <summary>
@@ -205,11 +207,11 @@ namespace Pandawan.Islands.Tilemaps
             }
 
             // Set the new tile in the Chunk's tiles list
-            Vector3Int localPosition = PositionUtilities.TileToLocalChunkPosition(tilePosition, size);
+            Vector3Int localPosition = TileToLocalChunkPosition(tilePosition);
             tiles[PositionToIndex(localPosition)] = tile.Id;
 
             // Set the new tile in the Tilemap
-            tilemap.SetTile(tilePosition, tile);
+            Tilemap.SetTile(tilePosition, tile);
 
             // Set the Chunk as Dirty
             IsDirty = true;
@@ -230,13 +232,13 @@ namespace Pandawan.Islands.Tilemaps
                 return;
             }
 
-            Vector3Int localPosition = PositionUtilities.TileToLocalChunkPosition(tilePosition, size);
+            Vector3Int localPosition = TileToLocalChunkPosition(tilePosition);
             tiles[PositionToIndex(localPosition)] = "";
 
             IsDirty = true;
 
             // Remove the tile in the Tilemap
-            tilemap.SetTile(tilePosition, null);
+            Tilemap.SetTile(tilePosition, null);
 
             // Reset the ChunkData for this position
             chunkData.ErasePositionProperty(tilePosition);
@@ -278,7 +280,31 @@ namespace Pandawan.Islands.Tilemaps
         {
             // TODO: Figure out a way to decouple world from chunk (aka make it so Chunk and World both have easy access to chunkSize without one knowing about the other).
             // Use the World's formula for chunk positions and check that they match
-            return PositionUtilities.TileToChunkPosition(tilePosition, World.instance.GetChunkSize()) == position;
+            return World.instance.TileToChunkPosition(tilePosition) == position;
+        }
+
+
+        /// <summary>
+        ///     Convert the given tile position to a chunk's local position (from 0 to chunkSize - 1).
+        /// </summary>
+        /// <param name="tilePosition">The tile position to convert from.</param>
+        /// <returns>The resulting local chunk position.</returns>
+        public Vector3Int TileToLocalChunkPosition(Vector3Int tilePosition)
+        {
+            // Formula to convert to local position AND invert negative tile positions (arrays can't go below 0)
+            return new Vector3Int((tilePosition.x % size.x + size.x) % size.x,
+                (tilePosition.y % size.y + size.y) % size.y, (tilePosition.z % size.z + size.z) % size.z);
+        }
+
+        /// <summary>
+        ///     Convert the given local chunk position to a world tile position.
+        /// </summary>
+        /// <param name="localPosition">The local chunk position to convert from.</param>
+        /// <returns>The resulting world tile position.</returns>
+        public Vector3Int LocalChunkToTilePosition(Vector3Int localPosition)
+        {
+            return new Vector3Int(localPosition.x + position.x * size.x, localPosition.y + position.y * size.y,
+                localPosition.z + position.z * size.z);
         }
 
         #endregion
@@ -306,7 +332,7 @@ namespace Pandawan.Islands.Tilemaps
             for (int z = bounds.zMin; z < bounds.zMax; z++)
             {
                 Vector3Int tilePosition = new Vector3Int(x, y, z);
-                tilemap.SetTile(tilePosition, null);
+                Tilemap.SetTile(tilePosition, null);
             }
 
             // Reset tile and chunkData

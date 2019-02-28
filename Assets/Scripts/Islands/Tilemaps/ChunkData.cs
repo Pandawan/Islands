@@ -293,7 +293,7 @@ namespace Pandawan.Islands.Tilemaps
             if (!chunk.IsValidPosition(tilePosition))
                 Debug.LogError($"Position {tilePosition} is not valid for ChunkData at {chunkBounds.position}");
 
-            return PositionUtilities.TileToChunkPosition(tilePosition, chunkBounds.size);
+            return chunk.TileToLocalChunkPosition(tilePosition);
         }
 
         #endregion

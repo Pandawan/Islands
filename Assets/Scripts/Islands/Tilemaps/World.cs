@@ -14,8 +14,8 @@ namespace Pandawan.Islands.Tilemaps
 
         public static World instance;
 
-        [SerializeField] private WorldInfo worldInfo;
-        [SerializeField] private Vector3Int chunkSize;
+        [SerializeField] private WorldInfo worldInfo = WorldInfo.Default;
+        [SerializeField] private Vector3Int chunkSize = Vector3Int.one;
         [SerializeField] private Tilemap tilemap;
 
         // TODO: This could be coupled to the Chunk itself by adding an extra public field and using chunks Dictionary directly.
@@ -239,7 +239,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="tilePosition">The Tile position to use.</param>
         public ChunkData GetChunkDataForTile(Vector3Int tilePosition)
         {
-            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
             return GetChunkData(chunkPosition);
         }
 
@@ -266,7 +266,7 @@ namespace Pandawan.Islands.Tilemaps
         public BasicTile GetTileAt(Vector3Int tilePosition)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
             Chunk chunk = GetOrCreateChunk(chunkPosition);
             return chunk.GetTileAt(tilePosition);
         }
@@ -279,7 +279,7 @@ namespace Pandawan.Islands.Tilemaps
         public void SetTileAt(Vector3Int tilePosition, string id)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
             Chunk chunk = GetOrCreateChunk(chunkPosition);
 
             chunk.SetTileAt(tilePosition, id);
@@ -293,7 +293,7 @@ namespace Pandawan.Islands.Tilemaps
         public void SetTileAt(Vector3Int tilePosition, BasicTile tile)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
-            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
             Chunk chunk = GetOrCreateChunk(chunkPosition);
 
             chunk.SetTileAt(tilePosition, tile);
@@ -306,10 +306,61 @@ namespace Pandawan.Islands.Tilemaps
         public void RemoveTileAt(Vector3Int tilePosition)
         {
             // TODO: Might want to make it so that removing and getting a tile doesn't CREATE a new chunk if none exists (and if there is no loadable chunk)
-            Vector3Int chunkPosition = PositionUtilities.TileToChunkPosition(tilePosition, chunkSize);
+            Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
             Chunk chunk = GetOrCreateChunk(chunkPosition);
 
             chunk.RemoveTileAt(tilePosition);
+        }
+
+        #endregion
+
+        #region Position Utilities
+
+        /// <summary>
+        ///     Convert the given tile position to its corresponding chunk's position.
+        /// </summary>
+        /// <param name="tilePosition">The tile position to convert from.</param>
+        /// <param name="roundUp">Whether to round up (Ceil) instead of truncating (Floor)</param>
+        /// <returns>The resulting chunk position.</returns>
+        public Vector3Int TileToChunkPosition(Vector3Int tilePosition, bool roundUp = false)
+        {
+            // Use Mathf.CeilToInt if rounding up
+            if (roundUp)
+                return new Vector3Int(
+                    Mathf.CeilToInt((float) tilePosition.x / (tilePosition.x < 0 ? chunkSize.x + 1 : chunkSize.x) +
+                                    (tilePosition.x < 0 ? -1 : 0)),
+                    Mathf.CeilToInt((float) tilePosition.y / (tilePosition.y < 0 ? chunkSize.y + 1 : chunkSize.y) +
+                                    (tilePosition.y < 0 ? -1 : 0)),
+                    Mathf.CeilToInt((float) tilePosition.z / (tilePosition.z < 0 ? chunkSize.z + 1 : chunkSize.z) +
+                                    (tilePosition.z < 0 ? -1 : 0))
+                );
+
+            // Not rounding up, just let int division take care of truncating
+            return new Vector3Int(
+                tilePosition.x / (tilePosition.x < 0 ? chunkSize.x + 1 : chunkSize.x) +
+                (tilePosition.x < 0 ? -1 : 0),
+                tilePosition.y / (tilePosition.y < 0 ? chunkSize.y + 1 : chunkSize.y) +
+                (tilePosition.y < 0 ? -1 : 0),
+                tilePosition.z / (tilePosition.z < 0 ? chunkSize.z + 1 : chunkSize.z) +
+                (tilePosition.z < 0 ? -1 : 0)
+            );
+        }
+
+        /// <summary>
+        ///     Convert the given tile bounds to chunk bounds, making sure that all chunks are included.
+        ///     Including the chunks that are only partially contained within the tile bounds.
+        /// </summary>
+        /// <param name="tileBounds">The tile position boundaries to convert from.</param>
+        /// <returns>The resulting chunk bounds.</returns>
+        public BoundsInt TileToChunkBounds(BoundsInt tileBounds)
+        {
+            Vector3Int min = TileToChunkPosition(tileBounds.min);
+            Vector3Int max = TileToChunkPosition(tileBounds.max, true);
+            Vector3Int size = max - min;
+
+            BoundsInt bounds = new BoundsInt(min.x, min.y, min.z, size.x, size.y, size.z);
+
+            return bounds;
         }
 
         #endregion
@@ -356,6 +407,8 @@ namespace Pandawan.Islands.Tilemaps
     [Serializable]
     public struct WorldInfo
     {
+        public static WorldInfo Default { get; } = new WorldInfo("world");
+
         [SerializeField] public string name;
 
         /// <summary>

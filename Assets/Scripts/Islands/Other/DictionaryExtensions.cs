@@ -30,7 +30,7 @@ namespace Pandawan.Islands.Other
         }
 
         /// <summary>
-        /// Flattens the given Dictionary into a string (using ToString()).
+        ///     Flattens the given Dictionary into a string (using ToString()).
         /// </summary>
         /// <typeparam name="TKey">TKey</typeparam>
         /// <typeparam name="TValue">TValue</typeparam>
@@ -50,7 +50,7 @@ namespace Pandawan.Islands.Other
                 sb.Append(x.Value);
                 sb.Append(sequenceSeparator);
             }
-            
+
             return sb.ToString(0, sb.Length - 1);
         }
     }

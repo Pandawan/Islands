@@ -15,7 +15,7 @@ namespace Pandawan.Islands.Tilemaps.Tiles
         [SerializeField] protected Color m_Color = Color.white;
 
         [SerializeField] protected Tile.ColliderType m_ColliderType = Tile.ColliderType.None;
-        
+
         [SerializeField] protected string m_Id => name;
 
         public string Id => m_Id;
@@ -43,7 +43,7 @@ namespace Pandawan.Islands.Tilemaps.Tiles
             get { return m_ColliderType; }
             set { m_ColliderType = value; }
         }
-        
+
         public override void GetTileData(Vector3Int location, ITilemap tilemap, ref TileData tileData)
         {
             tileData.sprite = Sprite;
