@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Debug = UnityEngine.Debug;
 
 namespace Pandawan.Islands.Tilemaps
 {
@@ -94,14 +96,20 @@ namespace Pandawan.Islands.Tilemaps
         {
             // Keep a list of tiles/positions to push to the tilemap later
             Dictionary<Vector3Int, TileBase> tilesToAdd = new Dictionary<Vector3Int, TileBase>();
-
+            
             // Load every tile
             for (int index = 0; index < tiles.GetLength(0); index++)
             {
                 Vector3Int tilePosition =
                     LocalChunkToTilePosition(IndexToPosition(index));
+                
                 string tileId = tiles[index];
-                if (!string.IsNullOrEmpty(tileId)) tilesToAdd.Add(tilePosition, TileDB.instance.GetTile(tileId));
+
+                if (!string.IsNullOrEmpty(tileId))
+                {
+                    tilesToAdd.Add(tilePosition, TileDB.GetTile(tileId));
+                }
+                
             }
 
             // Set all of the tiles that aren't empty in the tilemap
@@ -182,7 +190,7 @@ namespace Pandawan.Islands.Tilemaps
             }
 
             // Get the corresponding BasicTile and call SetTileAt with the BasicTile
-            BasicTile tile = TileDB.instance.GetTile(tileId);
+            BasicTile tile = TileDB.GetTile(tileId);
             SetTileAt(tilePosition, tile);
         }
 

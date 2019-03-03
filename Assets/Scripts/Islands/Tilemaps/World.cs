@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Pandawan.Islands.Other;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Debug = UnityEngine.Debug;
 
 namespace Pandawan.Islands.Tilemaps
 {
@@ -101,6 +103,7 @@ namespace Pandawan.Islands.Tilemaps
         public void RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
             // TODO: Optimize this so it loads multiple chunks at once (using the same FileStream in WorldManager)
+            // TODO: Maybe make this a coroutine so that it can wait until the end of the frame and load multiple chunks at once?
             // Load every chunkPosition
             foreach (Vector3Int chunkPosition in chunkPositions)
                 // Simply calling GetOrCreateChunk works
@@ -196,9 +199,16 @@ namespace Pandawan.Islands.Tilemaps
                     List<Chunk> chunk = WorldManager.LoadChunk(chunkPositions, worldInfo);
                     if (chunk != null && chunk.Count > 0)
                     {
+
                         // Add & Load new chunk into tilemap
                         chunks.Add(chunkPosition, chunk[0]);
+
+                        Stopwatch stopwatch = new Stopwatch();
+                        stopwatch.Start();
                         chunk[0].Setup(chunkSize, tilemap);
+
+                        stopwatch.Stop();
+                        Debug.Log($"Stopwatch took {stopwatch.Elapsed}");
                     }
                     else
                     {

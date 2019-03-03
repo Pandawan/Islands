@@ -1,6 +1,11 @@
 # Islands
 A 2D Survival Tile-based game in Unity
 
+## AA
+
+To make chunk loading (WorldManager) on a different thread, need World to use a queue of actions.
+Wouldn't that mean that Get needs to have a callback/be async as well? When loading a new chunk.
+
 ## TODO
 - Make ChunkLoader faster/different thread so it doesn't lag out when chunk loading...
 - Add ChunkLoader buffer so they load far away chunks without rendering them? Maybe...

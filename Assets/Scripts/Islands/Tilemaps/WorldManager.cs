@@ -37,7 +37,6 @@ namespace Pandawan.Islands.Tilemaps
             // TODO: Do other World Loading Steps
         }
 
-
         public static void LoadWorldAt(string savePath, World world)
         {
             WorldInfo info = LoadWorldInfoAt(savePath);
@@ -115,6 +114,7 @@ namespace Pandawan.Islands.Tilemaps
         public static void SaveChunks(List<Chunk> chunks, WorldInfo worldInfo)
         {
             string savePath = GetWorldSavePath(worldInfo.GetId());
+
             SaveChunksAt(chunks, savePath);
         }
 
