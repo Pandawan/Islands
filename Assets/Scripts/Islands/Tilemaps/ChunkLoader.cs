@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Pandawan.Islands.Other;
 using UnityEngine;
 
@@ -18,9 +19,9 @@ namespace Pandawan.Islands.Tilemaps
 
         private List<Vector3Int> previousLoadedChunks = new List<Vector3Int>();
 
-        private void Update()
+        private async void Update()
         {
-            LoadChunks();
+            await LoadChunks();
         }
 
         /// <summary>
@@ -28,7 +29,7 @@ namespace Pandawan.Islands.Tilemaps
         ///     Loads new ones.
         ///     Unloads old/non-needed ones.
         /// </summary>
-        private void LoadChunks()
+        private async Task LoadChunks()
         {
             // Get all the chunks that are within the bounds
             BoundsInt absoluteChunkBounds = GetAbsoluteBounds();
@@ -38,13 +39,17 @@ namespace Pandawan.Islands.Tilemaps
             // Get new chunks (chunks that are in new list but not in old one) 
             List<Vector3Int> chunksToLoad = new List<Vector3Int>(newChunksList
                 .Where(pos => !previousLoadedChunks.Contains(pos)));
-            World.instance.RequestChunkLoading(chunksToLoad, this);
-
+            
+            // Fire and forget chunk unloading
+            await World.instance.RequestChunkLoading(chunksToLoad, this);
+            
             // Get new chunks (chunks that are in old list but not in new one) 
             List<Vector3Int> chunksToUnload = new List<Vector3Int>(previousLoadedChunks.ToList()
                 .Where(pos => !newChunksList.Contains(pos)));
-            World.instance.RequestChunkUnLoading(chunksToUnload, this);
-
+            
+            // Fire and forget chunk unloading
+            await World.instance.RequestChunkUnLoading(chunksToUnload, this);
+            
             // Update previous list
             previousLoadedChunks = newChunksList;
         }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading.Tasks;
 using Pandawan.Islands.Other;
 using Pandawan.Islands.Serialization;
 using UnityEngine;
@@ -13,6 +14,8 @@ namespace Pandawan.Islands.Tilemaps
 {
     public static class WorldManager
     {
+        // TODO: Might want to use "async void" instead of "async Task" because Task doesn't crash on Exception... See https://stackoverflow.com/questions/12144077/async-await-when-to-return-a-task-vs-void
+        
         // TODO: Optimize this? Check if possible to import multiple tiles at once? Or maybe make it so that the Chunk doesn't "SET" the tilemap again.
         // TODO: Perhaps find way to make it so it doesn't set the chunk as Dirty?
         /// <summary>
@@ -20,142 +23,145 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilemap">The Tilemap to import from</param>
         /// <param name="world">The World to import to</param>
-        public static void ImportTilemap(Tilemap tilemap, World world)
+        public static async Task ImportTilemap(Tilemap tilemap, World world)
         {
             foreach (Vector3Int pos in tilemap.cellBounds.allPositionsWithin)
                 if (tilemap.HasTile(pos))
-                    world.SetTileAt(pos, tilemap.GetTile<TileBase>(pos).name);
+                    // TODO: Find way to also import ChunkData (would need a custom solution because Tilemaps don't store taht).
+                    await world.SetTileAt(pos, tilemap.GetTile<TileBase>(pos).name);
         }
 
         #region World 
 
-        public static void LoadWorld(string id, World world)
+        public static async Task LoadWorld(string id, World world)
         {
-            WorldInfo info = LoadWorldInfo(id);
+            WorldInfo info = world.GetWorldInfo();
+            string savePath = GetWorldSavePath(info.GetId());
+            await LoadWorldAt(savePath, world);
+        }
+
+        public static async Task LoadWorldAt(string savePath, World world)
+        {
+            WorldInfo info = await LoadWorldInfoAt(savePath);
             world.SetWorldInfo(info);
 
             // TODO: Do other World Loading Steps
         }
 
-        public static void LoadWorldAt(string savePath, World world)
+        public static async Task SaveWorld(World world)
         {
-            WorldInfo info = LoadWorldInfoAt(savePath);
-            world.SetWorldInfo(info);
+            WorldInfo info = world.GetWorldInfo();
+            string savePath = GetWorldSavePath(info.GetId());
 
-            // TODO: Do other World Loading Steps
+            await SaveWorldAt(world, savePath);
         }
 
-        public static void SaveWorld(World world)
+        public static async Task SaveWorldAt(World world, string savePath)
         {
             WorldInfo info = world.GetWorldInfo();
 
-            // Save the world info
-            SaveWorldInfo(info);
+            await SaveWorldInfoAt(info, savePath);
 
-            // Save all the dirty chunks
-            SaveChunks(world.GetDirtyChunks(), info);
-        }
-
-        public static void SaveWorldAt(World world, string savePath)
-        {
-            WorldInfo info = world.GetWorldInfo();
-
-            SaveWorldInfoAt(info, savePath);
-
-            SaveChunksAt(world.GetDirtyChunks(), savePath);
+            await SaveChunksAt(world.GetDirtyChunks(), savePath);
         }
 
         #endregion
 
         #region WorldInfo Load
 
-        public static WorldInfo LoadWorldInfo(string id)
+        public static async Task<WorldInfo> LoadWorldInfo(string id)
         {
             string savePath = GetWorldSavePath(id);
-            return LoadWorldInfoAt(savePath);
+            return await LoadWorldInfoAt(savePath);
         }
 
-        public static WorldInfo LoadWorldInfoAt(string savePath)
+        public static async Task<WorldInfo> LoadWorldInfoAt(string savePath)
         {
-            // Check that the World's Directory/Save exists
-            if (!Directory.Exists(savePath))
+            return await Task.Run(() =>
             {
-                Debug.LogError($"Could not load world at \"{savePath}\". It does not exist.");
-                return WorldInfo.Default;
-            }
-
-            IFormatter formatter = GetBinaryFormatter();
-
-            WorldInfo info = WorldInfo.Default;
-
-            // Read the WorldInfo file
-            string worldInfoPath = Path.Combine(savePath, "world.dat");
-            try
-            {
-                using (Stream stream =
-                    new FileStream(worldInfoPath, FileMode.Open, FileAccess.Read))
+                // Check that the World's Directory/Save exists
+                if (!Directory.Exists(savePath))
                 {
-                    info = (WorldInfo) formatter.Deserialize(stream);
-                    Debug.Log($"Found valid world at \"{savePath}\".");
+                    Debug.LogError($"Could not load world at \"{savePath}\". It does not exist.");
+                    return WorldInfo.Default;
                 }
-            }
-            catch (IOException e)
-            {
-                Debug.LogError($"Error while loading WorldInfo at {worldInfoPath}. {e}");
-            }
 
-            return info;
+                IFormatter formatter = GetBinaryFormatter();
+
+                WorldInfo info = WorldInfo.Default;
+
+                // Read the WorldInfo file
+                string worldInfoPath = Path.Combine(savePath, "world.dat");
+                try
+                {
+                    using (Stream stream =
+                        new FileStream(worldInfoPath, FileMode.Open, FileAccess.Read))
+                    {
+                        info = (WorldInfo) formatter.Deserialize(stream);
+                        Debug.Log($"Found valid world at \"{savePath}\".");
+                    }
+                }
+                catch (IOException e)
+                {
+                    Debug.LogError($"Error while loading WorldInfo at {worldInfoPath}. {e}");
+                }
+
+                return info;
+            });
         }
 
         #endregion
 
         #region Chunk Save
 
-        public static void SaveChunks(List<Chunk> chunks, WorldInfo worldInfo)
+        public static async Task SaveChunks(List<Chunk> chunks, WorldInfo worldInfo)
         {
             string savePath = GetWorldSavePath(worldInfo.GetId());
 
-            SaveChunksAt(chunks, savePath);
+            await SaveChunksAt(chunks, savePath);
         }
 
-        public static void SaveChunksAt(List<Chunk> chunks, string savePath)
+        public static async Task SaveChunksAt(List<Chunk> chunks, string savePath)
         {
-            string chunksPath = Path.Combine(savePath, "chunks");
-
-            // Check that the save path already exists
-            try
+            await Task.Run(() =>
             {
-                // Create a Directory if it doesn't exist
-                Directory.CreateDirectory(chunksPath);
-            }
-            catch (IOException e)
-            {
-                Debug.LogError($"Error while opening save path \"{savePath}\". {e}");
-                return;
-            }
+                string chunksPath = Path.Combine(savePath, "chunks");
 
-            IFormatter formatter = GetBinaryFormatter();
-
-            // Save all the chunk data
-            foreach (Chunk chunk in chunks)
-            {
-                // Save chunk at SavesPath/chunks/chunk_id.dat
-                string chunkPath = Path.Combine(chunksPath, $"{chunk.GetId()}.dat");
+                // Check that the save path already exists
                 try
                 {
-                    // Try opening a file path
-                    using (Stream stream = new FileStream(chunkPath, FileMode.Create, FileAccess.ReadWrite))
-                    {
-                        formatter.Serialize(stream, chunk);
-                    }
+                    // Create a Directory if it doesn't exist
+                    Directory.CreateDirectory(chunksPath);
                 }
                 catch (IOException e)
                 {
-                    Debug.LogError($"Error while saving {chunk} at \"{chunkPath}\". {e}");
+                    Debug.LogError($"Error while opening save path \"{savePath}\". {e}");
+                    return;
                 }
-            }
 
-            Debug.Log($"Successfully saved chunk at \"{savePath}\".");
+                IFormatter formatter = GetBinaryFormatter();
+
+                // Save all the chunk data
+                foreach (Chunk chunk in chunks)
+                {
+                    // Save chunk at SavesPath/chunks/chunk_id.dat
+                    string chunkPath = Path.Combine(chunksPath, $"{chunk.GetId()}.dat");
+                    try
+                    {
+                        // Try opening a file path
+                        using (Stream stream = new FileStream(chunkPath, FileMode.Create, FileAccess.ReadWrite))
+                        {
+                            formatter.Serialize(stream, chunk);
+                        }
+                    }
+                    catch (IOException e)
+                    {
+                        Debug.LogError($"Error while saving {chunk} at \"{chunkPath}\". {e}");
+                    }
+                }
+
+                Debug.Log($"Successfully saved chunk at \"{savePath}\".");
+            });
         }
 
         #endregion
@@ -172,6 +178,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <returns>Returns true if ALL chunks exist.</returns>
         public static bool ChunksExist(List<Vector3Int> chunkPos, WorldInfo worldInfo)
         {
+            // TODO: Check if this needs to run on a separate thread/Task
             string savePath = GetWorldSavePath(worldInfo.GetId());
 
             string chunksPath = Path.Combine(savePath, "chunks");
@@ -188,93 +195,99 @@ namespace Pandawan.Islands.Tilemaps
             return true;
         }
 
-        public static List<Chunk> LoadChunk(List<Vector3Int> chunkPos, WorldInfo worldInfo)
+        public static async Task<List<Chunk>> LoadChunk(List<Vector3Int> chunkPos, WorldInfo worldInfo)
         {
             string savePath = GetWorldSavePath(worldInfo.GetId());
-            return LoadChunkAt(chunkPos, savePath);
+            return await LoadChunkAt(chunkPos, savePath);
         }
 
-        public static List<Chunk> LoadChunkAt(List<Vector3Int> chunkPos, string savePath)
+        public static async Task<List<Chunk>> LoadChunkAt(List<Vector3Int> chunkPos, string savePath)
         {
-            // Check that the World's Directory/Save exists
-            if (!Directory.Exists(savePath))
+            return await Task.Run(() =>
             {
-                Debug.LogError($"Could not load chunks at \"{savePath}\". It does not exist.");
-                return null;
-            }
+                // Check that the World's Directory/Save exists
+                if (!Directory.Exists(savePath))
+                {
+                    Debug.LogError($"Could not load chunks at \"{savePath}\". It does not exist.");
+                    return null;
+                }
 
-            IFormatter formatter = GetBinaryFormatter();
+                IFormatter formatter = GetBinaryFormatter();
 
-            string chunksPath = Path.Combine(savePath, "chunks");
+                string chunksPath = Path.Combine(savePath, "chunks");
 
-            // Check if there are chunks to load
-            if (Directory.Exists(chunksPath))
-            {
-                List<Chunk> chunks = new List<Chunk>();
+                // Check if there are chunks to load
+                if (Directory.Exists(chunksPath))
+                {
+                    List<Chunk> chunks = new List<Chunk>();
 
-                // Get save path for each Chunk position
-                string[] chunkPaths = chunkPos.Select(pos => Path.Combine(chunksPath,
-                        $"{Chunk.GetIdForPosition(pos)}.dat"))
-                    .ToArray();
-                foreach (string chunkPath in chunkPaths)
-                    try
-                    {
-                        using (Stream stream = new FileStream(chunkPath, FileMode.Open, FileAccess.Read))
+                    // Get save path for each Chunk position
+                    string[] chunkPaths = chunkPos.Select(pos => Path.Combine(chunksPath,
+                            $"{Chunk.GetIdForPosition(pos)}.dat"))
+                        .ToArray();
+                    foreach (string chunkPath in chunkPaths)
+                        try
                         {
-                            chunks.Add((Chunk) formatter.Deserialize(stream));
+                            using (Stream stream = new FileStream(chunkPath, FileMode.Open, FileAccess.Read))
+                            {
+                                chunks.Add((Chunk) formatter.Deserialize(stream));
+                            }
                         }
-                    }
-                    catch (IOException e)
-                    {
-                        Debug.LogError($"Error while loading chunks at \"{chunkPath}\". {e}");
-                    }
+                        catch (IOException e)
+                        {
+                            Debug.LogError($"Error while loading chunks at \"{chunkPath}\". {e}");
+                        }
 
-                return chunks;
-            }
+                    return chunks;
+                }
 
-            return null;
+                return null;
+            });
         }
 
         #endregion
 
         #region WorldInfo Save
 
-        public static void SaveWorldInfo(WorldInfo worldInfo)
+        public static async Task SaveWorldInfo(WorldInfo worldInfo)
         {
             string savePath = GetWorldSavePath(worldInfo.GetId());
-            SaveWorldInfoAt(worldInfo, savePath);
+            await SaveWorldInfoAt(worldInfo, savePath);
         }
 
-        public static void SaveWorldInfoAt(WorldInfo worldInfo, string savePath)
+        public static async Task SaveWorldInfoAt(WorldInfo worldInfo, string savePath)
         {
-            // Check that the save path already exists
-            try
+            await Task.Run(() =>
             {
-                // Create a Directory if it doesn't exist
-                Directory.CreateDirectory(savePath);
-            }
-            catch (IOException e)
-            {
-                Debug.LogError($"Error while opening save path \"{savePath}\". {e}");
-                return;
-            }
-
-            IFormatter formatter = GetBinaryFormatter();
-
-            // Save the world info
-            string worldInfoPath = Path.Combine(savePath, "world.dat");
-            try
-            {
-                using (Stream stream =
-                    new FileStream(worldInfoPath, FileMode.Create, FileAccess.ReadWrite))
+                // Check that the save path already exists
+                try
                 {
-                    formatter.Serialize(stream, worldInfo);
+                    // Create a Directory if it doesn't exist
+                    Directory.CreateDirectory(savePath);
                 }
-            }
-            catch (IOException e)
-            {
-                Debug.LogError($"Error while saving WorldInfo at \"{worldInfoPath}\". {e}");
-            }
+                catch (IOException e)
+                {
+                    Debug.LogError($"Error while opening save path \"{savePath}\". {e}");
+                    return;
+                }
+
+                IFormatter formatter = GetBinaryFormatter();
+
+                // Save the world info
+                string worldInfoPath = Path.Combine(savePath, "world.dat");
+                try
+                {
+                    using (Stream stream =
+                        new FileStream(worldInfoPath, FileMode.Create, FileAccess.ReadWrite))
+                    {
+                        formatter.Serialize(stream, worldInfo);
+                    }
+                }
+                catch (IOException e)
+                {
+                    Debug.LogError($"Error while saving WorldInfo at \"{worldInfoPath}\". {e}");
+                }
+            });
         }
 
         #endregion
@@ -288,6 +301,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <returns>True if it exists</returns>
         public static bool WorldExists(string worldId)
         {
+            // TODO: Does this need an async method?
             string savePath = GetWorldSavePath(worldId);
             return Directory.Exists(savePath);
         }

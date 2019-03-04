@@ -1,24 +1,28 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Pandawan.Islands.Other;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
-using Debug = UnityEngine.Debug;
 
 namespace Pandawan.Islands.Tilemaps
 {
     public class World : MonoBehaviour
     {
-        public delegate void WorldEvent(World world);
+        // TODO: Should this allow for Tasks
+        public delegate Task WorldEvent(World world);
 
         public static World instance;
 
         [SerializeField] private WorldInfo worldInfo = WorldInfo.Default;
         [SerializeField] private Vector3Int chunkSize = Vector3Int.one;
         [SerializeField] private Tilemap tilemap;
+
+        // Keeps track of current loading tasks for each chunk
+        private readonly Dictionary<Vector3Int, Task<List<Chunk>>> chunkLoadingTasks =
+            new Dictionary<Vector3Int, Task<List<Chunk>>>();
 
         // TODO: This could be coupled to the Chunk itself by adding an extra public field and using chunks Dictionary directly.
         // Keeps track of the last "loading" request for each chunk
@@ -43,17 +47,26 @@ namespace Pandawan.Islands.Tilemaps
                 Debug.LogError("No Tilemap set for World.");
         }
 
-        private void Start()
+        private async void Start()
         {
             // TODO: Call WorldManager.LoadWorld & Find place to call WorldManager.SaveWorld
 
             // Call any event handler subscribed to World.GenerationEvent
-            GenerationEvent?.Invoke(this);
+            // TODO: Should this use "await GenerationEvent.Invoke()" ? 
+            if (GenerationEvent != null)
+                await GenerationEvent.Invoke(this);
         }
 
-        private void Update()
+        private async void Update()
         {
-            DiscardOldChunks();
+            await DiscardOldChunks();
+        }
+
+        private void OnDisable()
+        {
+            foreach (Task<List<Chunk>> chunkLoadingTask in chunkLoadingTasks.Values)
+                // TODO: Instead of Dispose() use a CancellationToken and cancel all of these tasks
+                chunkLoadingTask.Dispose();
         }
 
         private void OnDrawGizmosSelected()
@@ -67,7 +80,7 @@ namespace Pandawan.Islands.Tilemaps
             }
         }
 
-        private void DiscardOldChunks()
+        private async Task DiscardOldChunks()
         {
             // TODO: Clean this up so I don't have to use null loaders
             // Removes every chunk request that has a null loader (aka one-time load request)
@@ -77,7 +90,7 @@ namespace Pandawan.Islands.Tilemaps
                 List<ChunkLoader> loaders = chunkLoadRequest.Value.FindAll(loader => loader == null);
                 foreach (ChunkLoader chunkLoader in loaders)
                     // Remove the chunk
-                    RequestChunkUnLoading(chunkLoadRequest.Key, chunkLoader);
+                    await RequestChunkUnLoading(chunkLoadRequest.Key, chunkLoader);
             }
         }
 
@@ -90,9 +103,9 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="chunkPosition">The chunk position at which to load.</param>
         /// <param name="requester">The ChunkLoader that requested to load this chunk.</param>
-        public void RequestChunkLoading(Vector3Int chunkPosition, ChunkLoader requester)
+        public async Task RequestChunkLoading(Vector3Int chunkPosition, ChunkLoader requester)
         {
-            RequestChunkLoading(new List<Vector3Int> {chunkPosition}, requester);
+            await RequestChunkLoading(new List<Vector3Int> {chunkPosition}, requester);
         }
 
         /// <summary>
@@ -100,14 +113,18 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="chunkPositions">The chunk positions at which to load.</param>
         /// <param name="requester">The ChunkLoader that requested to load this chunk.</param>
-        public void RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        public async Task RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
             // TODO: Optimize this so it loads multiple chunks at once (using the same FileStream in WorldManager)
             // TODO: Maybe make this a coroutine so that it can wait until the end of the frame and load multiple chunks at once?
             // Load every chunkPosition
             foreach (Vector3Int chunkPosition in chunkPositions)
+            {
+                Debug.Log("Loading chunk " + chunkPosition);
+
                 // Simply calling GetOrCreateChunk works
-                GetOrCreateChunk(chunkPosition, requester);
+                await GetOrCreateChunk(chunkPosition, requester);
+            }
         }
 
         /// <summary>
@@ -115,9 +132,9 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="chunkPosition">The chunk position at which to unload.</param>
         /// <param name="requester">The ChunkLoader asking </param>
-        public void RequestChunkUnLoading(Vector3Int chunkPosition, ChunkLoader requester)
+        public async Task RequestChunkUnLoading(Vector3Int chunkPosition, ChunkLoader requester)
         {
-            RequestChunkUnLoading(new List<Vector3Int> {chunkPosition}, requester);
+            await RequestChunkUnLoading(new List<Vector3Int> {chunkPosition}, requester);
         }
 
         /// <summary>
@@ -125,7 +142,7 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="chunkPositions">The chunk positions at which to unload.</param>
         /// <param name="requester">The ChunkLoader that requested to unload this chunk.</param>
-        public void RequestChunkUnLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        public async Task RequestChunkUnLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
             List<Chunk> chunksToSave = new List<Chunk>();
 
@@ -142,6 +159,7 @@ namespace Pandawan.Islands.Tilemaps
                 // If that Chunk is no longer needed
                 if (chunkLoadRequests[chunkPosition].Count == 0)
                 {
+                    Debug.Log("Unloading chunk " + chunkPosition);
                     // Add the chunk to be saved if they have been modified
                     if (chunks[chunkPosition].IsDirty)
                         chunksToSave.Add(chunks[chunkPosition]);
@@ -157,7 +175,7 @@ namespace Pandawan.Islands.Tilemaps
             // Save all of the chunks in the chunksToSave List
             if (chunksToSave.Count > 0)
             {
-                WorldManager.SaveChunks(chunksToSave, worldInfo);
+                await WorldManager.SaveChunks(chunksToSave, worldInfo);
                 // Clear them once saved
                 foreach (Chunk chunk in chunksToSave) chunk.Clear(false);
             }
@@ -178,13 +196,18 @@ namespace Pandawan.Islands.Tilemaps
         #region Chunk Abstraction
 
         // TODO: Refactor so I don't have to pass in a loader (aka find another way to make the whole "loader" system)
+        // TODO: Refactor so it's all in multiple methods...
         /// <summary>
         ///     Get, Load, or Create a chunk at the given position.
         /// </summary>
         /// <param name="chunkPosition">The chunk position.</param>
         /// <param name="loader">The loader that asked to get this chunk.</param>
-        private Chunk GetOrCreateChunk(Vector3Int chunkPosition, ChunkLoader loader = null)
+        private async Task<Chunk> GetOrCreateChunk(Vector3Int chunkPosition, ChunkLoader loader = null)
         {
+            // If that chunk is currently loading, wait until it's done
+            if (chunkLoadingTasks.ContainsKey(chunkPosition) && chunkLoadingTasks != null)
+                await chunkLoadingTasks[chunkPosition];
+
             // If it doesn't exist, create a new one
             if (!chunks.ContainsKey(chunkPosition))
             {
@@ -195,29 +218,37 @@ namespace Pandawan.Islands.Tilemaps
                 // TODO: Refactor this so I don't repeat that line twice.
                 if (WorldManager.ChunksExist(chunkPositions, worldInfo))
                 {
+                    // TODO: Stop WorldManager using List<Chunk> for everything
+                    // If the chunk is not currently loading, loading it
+                    // Add the loading task to the list
+                    chunkLoadingTasks.Add(chunkPosition, WorldManager.LoadChunk(chunkPositions, worldInfo));
+
                     // Load the chunk from FS if possible
-                    List<Chunk> chunk = WorldManager.LoadChunk(chunkPositions, worldInfo);
-                    if (chunk != null && chunk.Count > 0)
+                    // WorldManager uses List<Chunk> for everything so keep it all in that
+                    List<Chunk> chunkList = await chunkLoadingTasks[chunkPosition];
+
+                    // Once done loading (after await), remove it from the loading task list
+                    chunkLoadingTasks.Remove(chunkPosition);
+
+                    // If it was able to load a chunk
+                    if (chunkList != null && chunkList.Count > 0)
                     {
-
                         // Add & Load new chunk into tilemap
-                        chunks.Add(chunkPosition, chunk[0]);
+                        chunks.Add(chunkPosition, chunkList[0]);
 
-                        Stopwatch stopwatch = new Stopwatch();
-                        stopwatch.Start();
-                        chunk[0].Setup(chunkSize, tilemap);
-
-                        stopwatch.Stop();
-                        Debug.Log($"Stopwatch took {stopwatch.Elapsed}");
+                        chunkList[0].Setup(chunkSize, tilemap);
                     }
+                    // If it couldn't load any chunk
                     else
                     {
                         chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
+                        // TODO: Add Chunk generation.
                     }
                 }
                 else
                 {
                     chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
+                    // TODO: Add Chunk generation.
                 }
             }
 
@@ -262,22 +293,22 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position to check for.</param>
         /// <returns>True if there is no tile at the given position.</returns>
-        public bool IsEmptyTileAt(Vector3Int tilePosition)
+        public async Task<bool> IsEmptyTileAt(Vector3Int tilePosition)
         {
             // If the Tile doesn't exist OR its value is empty
-            return GetTileAt(tilePosition) == null ||
-                   string.IsNullOrEmpty(GetTileAt(tilePosition).Id);
+            return await GetTileAt(tilePosition) == null ||
+                   string.IsNullOrEmpty((await GetTileAt(tilePosition)).Id);
         }
 
         /// <summary>
         ///     Get the tile at the given position.
         /// </summary>
         /// <param name="tilePosition">The position to get the tile at.</param>
-        public BasicTile GetTileAt(Vector3Int tilePosition)
+        public async Task<BasicTile> GetTileAt(Vector3Int tilePosition)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
             Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
-            Chunk chunk = GetOrCreateChunk(chunkPosition);
+            Chunk chunk = await GetOrCreateChunk(chunkPosition);
             return chunk.GetTileAt(tilePosition);
         }
 
@@ -286,11 +317,11 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position to set the tile at.</param>
         /// <param name="id">The id of tile to set.</param>
-        public void SetTileAt(Vector3Int tilePosition, string id)
+        public async Task SetTileAt(Vector3Int tilePosition, string id)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
             Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
-            Chunk chunk = GetOrCreateChunk(chunkPosition);
+            Chunk chunk = await GetOrCreateChunk(chunkPosition);
 
             chunk.SetTileAt(tilePosition, id);
         }
@@ -300,11 +331,11 @@ namespace Pandawan.Islands.Tilemaps
         /// </summary>
         /// <param name="tilePosition">The position to set the tile at.</param>
         /// <param name="tile">The BasicTile object to set.</param>
-        public void SetTileAt(Vector3Int tilePosition, BasicTile tile)
+        public async Task SetTileAt(Vector3Int tilePosition, BasicTile tile)
         {
             // Get a chunk at the corresponding Chunk position for the given tile position
             Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
-            Chunk chunk = GetOrCreateChunk(chunkPosition);
+            Chunk chunk = await GetOrCreateChunk(chunkPosition);
 
             chunk.SetTileAt(tilePosition, tile);
         }
@@ -313,11 +344,11 @@ namespace Pandawan.Islands.Tilemaps
         ///     Remove the tile at the given position.
         /// </summary>
         /// <param name="tilePosition">The position to remove the tile at.</param>
-        public void RemoveTileAt(Vector3Int tilePosition)
+        public async Task RemoveTileAt(Vector3Int tilePosition)
         {
             // TODO: Might want to make it so that removing and getting a tile doesn't CREATE a new chunk if none exists (and if there is no loadable chunk)
             Vector3Int chunkPosition = TileToChunkPosition(tilePosition);
-            Chunk chunk = GetOrCreateChunk(chunkPosition);
+            Chunk chunk = await GetOrCreateChunk(chunkPosition);
 
             chunk.RemoveTileAt(tilePosition);
         }

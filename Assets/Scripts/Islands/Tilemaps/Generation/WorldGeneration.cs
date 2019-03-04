@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Pandawan.Islands.Other;
 using UnityEngine;
 
@@ -25,7 +26,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
             worldComponent.GenerationEvent += Generate;
         }
 
-        public void Generate(World world)
+        public async Task Generate(World world)
         {
             // TODO: Find a seed system so that auto-generated tiles aren't saved by the world? Or perhaps something like, replace if empty? Idk...
             switch (type)
@@ -33,17 +34,17 @@ namespace Pandawan.Islands.Tilemaps.Generation
                 case GenerationType.None:
                     return;
                 case GenerationType.Perlin:
-                    PerlinGeneration(world);
+                    await PerlinGeneration(world);
                     break;
                 case GenerationType.Circle:
                     CircleGeneration(world);
                     break;
                 case GenerationType.SquareNoBorders:
-                    SquareNoBordersGeneration(world);
+                    await SquareNoBordersGeneration(world);
                     break;
                 case GenerationType.Square:
                 default:
-                    SquareGeneration(world);
+                    await SquareGeneration(world);
                     break;
             }
 
@@ -57,7 +58,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
             Debug.Log("Successfully Generated World.");
         }
 
-        private void PerlinGeneration(World world)
+        private async Task PerlinGeneration(World world)
         {
             // TODO: Negative values are inverse of positive, find a fix for this (maybe local coordinates?)
             // Perlin returns the same value for ints, use a scaler to prevent this
@@ -70,21 +71,21 @@ namespace Pandawan.Islands.Tilemaps.Generation
                 float height = Mathf.PerlinNoise(x * scaler, y * scaler);
                 string tile = "water";
                 if (height > 0.35f) tile = "grass";
-                if (world.IsEmptyTileAt(position)) world.SetTileAt(position, tile);
+                if (await world.IsEmptyTileAt(position)) await world.SetTileAt(position, tile);
             }
         }
 
-        private void SquareGeneration(World world)
+        private async Task SquareGeneration(World world)
         {
             for (int x = islandSize.xMin; x < islandSize.xMax; x++)
             for (int y = islandSize.yMin; y < islandSize.yMax; y++)
             {
                 Vector3Int position = new Vector3Int(x, y, 0);
-                if (world.IsEmptyTileAt(position)) world.SetTileAt(position, "grass");
+                if (await world.IsEmptyTileAt(position)) await world.SetTileAt(position, "grass");
             }
         }
 
-        private void SquareNoBordersGeneration(World world)
+        private async Task SquareNoBordersGeneration(World world)
         {
             for (int x = islandSize.xMin; x < islandSize.xMax; x++)
             for (int y = islandSize.yMin; y < islandSize.yMax; y++)
@@ -92,7 +93,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
                     y != islandSize.yMin && y != islandSize.yMax - 1)
                 {
                     Vector3Int position = new Vector3Int(x, y, 0);
-                    if (world.IsEmptyTileAt(position)) world.SetTileAt(position, "grass");
+                    if (await world.IsEmptyTileAt(position)) await world.SetTileAt(position, "grass");
                 }
         }
 
@@ -101,13 +102,13 @@ namespace Pandawan.Islands.Tilemaps.Generation
             throw new NotImplementedException();
         }
 
-        private void WaterGeneration(World world)
+        private async Task WaterGeneration(World world)
         {
             for (int x = islandSize.xMin - islandSize.size.x; x < islandSize.xMax + islandSize.size.x; x++)
             for (int y = islandSize.yMin - islandSize.size.y; y < islandSize.yMax + islandSize.size.y; y++)
             {
                 Vector3Int position = new Vector3Int(x, y, 0);
-                if (world.IsEmptyTileAt(position)) world.SetTileAt(position, "water");
+                if (await world.IsEmptyTileAt(position)) await world.SetTileAt(position, "water");
             }
         }
 

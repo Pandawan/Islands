@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.Tilemaps;
 
 namespace Pandawan.Islands.Tilemaps.Generation
@@ -29,9 +30,9 @@ namespace Pandawan.Islands.Tilemaps.Generation
             worldComponent.GenerationEvent += Import;
         }
 
-        public void Import(World world)
+        public async Task Import(World world)
         {
-            WorldManager.ImportTilemap(tilemap, world);
+            await WorldManager.ImportTilemap(tilemap, world);
             Debug.Log("Successfully imported Tilemap to World.");
         }
     }
