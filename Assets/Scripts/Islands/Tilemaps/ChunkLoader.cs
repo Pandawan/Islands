@@ -48,7 +48,7 @@ namespace Pandawan.Islands.Tilemaps
                 .Where(pos => !newChunksList.Contains(pos)));
             
             // Fire and forget chunk unloading
-            await World.instance.RequestChunkUnLoading(chunksToUnload, this);
+            await World.instance.RequestChunkUnloading(chunksToUnload, this);
             
             // Update previous list
             previousLoadedChunks = newChunksList;

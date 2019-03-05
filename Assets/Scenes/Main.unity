@@ -240,6 +240,7 @@ GameObject:
   - component: {fileID: 948457040}
   - component: {fileID: 948457039}
   - component: {fileID: 948457037}
+  - component: {fileID: 948457038}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -256,12 +257,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 948457036}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ee2507a8f628d949b5b42208787e47f, type: 3}
+  m_Script: {fileID: 11500000, guid: 83c503fbb80e4ae2a2024494e4aa0440, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  chunkSize: {x: 32, y: 32, z: 32}
+  tilemap: {fileID: 622777449256560938}
   worldInfo:
     name: world
-  chunkSize: {x: 32, y: 32, z: 32}
+--- !u!114 &948457038
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 948457036}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c93a9ffc773f407e84b023e339b1a943, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   tilemap: {fileID: 622777449256560938}
 --- !u!156049354 &948457039
 Grid:

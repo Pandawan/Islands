@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,32 +9,36 @@ using UnityEngine.Tilemaps;
 
 namespace Pandawan.Islands.Tilemaps
 {
+    // This is a rewrite of the Chunk Loading systems for World.cs into a neater class
     public class World : MonoBehaviour
     {
-        // TODO: Should this allow for Tasks
         public delegate Task WorldEvent(World world);
 
         public static World instance;
 
-        [SerializeField] private WorldInfo worldInfo = WorldInfo.Default;
         [SerializeField] private Vector3Int chunkSize = Vector3Int.one;
+
         [SerializeField] private Tilemap tilemap;
 
-        // Keeps track of current loading tasks for each chunk
+        [SerializeField] private WorldInfo worldInfo = WorldInfo.Default;
+
+        // List of every chunk loader that requested for this chunk to be loaded
+        private readonly Dictionary<Vector3Int, List<ChunkLoader>> chunkLoadingRequests =
+            new Dictionary<Vector3Int, List<ChunkLoader>>();
+
+        // Tasks of chunks that are currently being loaded
         private readonly Dictionary<Vector3Int, Task<List<Chunk>>> chunkLoadingTasks =
             new Dictionary<Vector3Int, Task<List<Chunk>>>();
 
-        // TODO: This could be coupled to the Chunk itself by adding an extra public field and using chunks Dictionary directly.
-        // Keeps track of the last "loading" request for each chunk
-        private readonly Dictionary<Vector3Int, List<ChunkLoader>> chunkLoadRequests =
-            new Dictionary<Vector3Int, List<ChunkLoader>>();
+        // Operations waiting to be applied to chunks
+        private readonly Queue<IChunkOperation> chunkOperations = new Queue<IChunkOperation>();
 
-        // Keeps track of every chunk
+        // Every chunk that is currently loaded in the world
         private readonly Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
 
         public event WorldEvent GenerationEvent;
 
-        #region World Lifecycle
+        #region Lifecycle
 
         private void Awake()
         {
@@ -52,46 +56,244 @@ namespace Pandawan.Islands.Tilemaps
             // TODO: Call WorldManager.LoadWorld & Find place to call WorldManager.SaveWorld
 
             // Call any event handler subscribed to World.GenerationEvent
-            // TODO: Should this use "await GenerationEvent.Invoke()" ? 
             if (GenerationEvent != null)
                 await GenerationEvent.Invoke(this);
         }
 
+        // TODO: Make sure that all of these finish being processed before the game closes
         private async void Update()
         {
-            await DiscardOldChunks();
+            await ProcessOperations();
         }
 
-        private void OnDisable()
+        /// <summary>
+        ///     <para>
+        ///         Process all the ChunkOperations currently in the queue.
+        ///         Everything is asynchronous and should load (at best) by grouping everything into lists before saving/loading.
+        ///     </para>
+        ///     <a href="http://www.stevevermeulen.com/index.php/2017/09/using-async-await-in-unity3d-2017/">
+        ///         See for more info on async + Unity.
+        ///     </a>
+        /// </summary>
+        private async Task ProcessOperations()
         {
-            foreach (Task<List<Chunk>> chunkLoadingTask in chunkLoadingTasks.Values)
-                // TODO: Instead of Dispose() use a CancellationToken and cancel all of these tasks
-                chunkLoadingTask.Dispose();
-        }
+            List<Chunk> chunksToUnload = new List<Chunk>();
 
-        private void OnDrawGizmosSelected()
-        {
-            Gizmos.color = Color.yellow;
-            Vector3 size = chunkSize;
-            foreach (Vector3 position in chunks.Keys)
+            // If there are any elements in the queue of operations
+            while (chunkOperations.Any())
             {
-                position.Scale(size);
-                Gizmos.DrawWireCube(position + size / 2, size);
+                // Get the first operation and execute it
+                IChunkOperation operation = chunkOperations.Dequeue();
+                await operation.Execute(this);
+
+                // If there aren't any other operations that need that chunk, add it to the list of chunks to unload
+
+                // TODO: What if a chunk is set to be unloaded here, but before the chunkOperations.Any() ends, there are other operations that were added?
+                // Check that no other operations need that chunk (aka ALL of them do NOT have that position)
+                if (chunkOperations.All(chunkOperation => chunkOperation.ChunkPosition != operation.ChunkPosition))
+                    // Check that the chunk isn't requested to remain loaded (by a chunk loader)
+                    if (!chunkLoadingRequests.ContainsKey(operation.ChunkPosition))
+                        // Also make sure that the chunk actually exists, maybe the operation is wrong...
+                        if (chunks.ContainsKey(operation.ChunkPosition))
+                            chunksToUnload.Add(chunks[operation.ChunkPosition]);
             }
+
+            // Unload all the chunks that are no longer needed
+            await UnloadChunks(chunksToUnload, worldInfo);
         }
 
-        private async Task DiscardOldChunks()
+        #endregion
+
+        #region Chunk Accessor
+
+        /// <summary>
+        ///     Get, Load, or Create the chunk at the given position.
+        /// </summary>
+        /// <param name="chunkPosition">The ChunkPosition at which to get the chunk from.</param>
+        public async Task<Chunk> GetOrCreateChunk(Vector3Int chunkPosition)
         {
-            // TODO: Clean this up so I don't have to use null loaders
-            // Removes every chunk request that has a null loader (aka one-time load request)
-            foreach (KeyValuePair<Vector3Int, List<ChunkLoader>> chunkLoadRequest in chunkLoadRequests.ToList())
+            return (await GetOrCreateChunk(new List<Vector3Int> {chunkPosition}))[0];
+        }
+
+        /// <summary>
+        ///     Get, Load, or Create all the chunks at the given position.
+        /// </summary>
+        /// <param name="chunkPositions">The ChunkPositions at which to get the chunks from.</param>
+        public async Task<List<Chunk>> GetOrCreateChunk(List<Vector3Int> chunkPositions)
+        {
+            // This is the final chunk list
+            List<Chunk> chunkList = new List<Chunk>();
+
+            // Keep track of all the chunks that need to be loaded (and aren't currently loading)
+            List<Vector3Int> chunksToLoad = new List<Vector3Int>();
+
+            // Await for the chunks that are already loading and add them to the chunkList
+            foreach (Vector3Int chunkPosition in chunkPositions)
+                // If that chunk is already loading
+                if (chunkLoadingTasks.ContainsKey(chunkPosition))
+                {
+                    // Wait for it to load
+                    List<Chunk> newChunks = await chunkLoadingTasks[chunkPosition];
+                    // Once done loading, add that chunk to the list
+                    foreach (Chunk newChunk in newChunks)
+                        if (newChunk.position == chunkPosition)
+                            chunkList.Add(newChunk);
+                }
+                // If if isn't currently loading, add it to a list of chunks to load
+                else
+                {
+                    chunksToLoad.Add(chunkPosition);
+                }
+
+            // If there are some chunks that need to be loaded
+            if (chunksToLoad.Count > 0)
             {
-                // Get every chunkLoadRequest which has a null loader
-                List<ChunkLoader> loaders = chunkLoadRequest.Value.FindAll(loader => loader == null);
-                foreach (ChunkLoader chunkLoader in loaders)
-                    // Remove the chunk
-                    await RequestChunkUnLoading(chunkLoadRequest.Key, chunkLoader);
+                // Prepare a task for all the chunks that weren't already loading
+                Task<List<Chunk>> loadingTask = _GetOrCreateChunks(chunksToLoad);
+                // Register this task for each chunk so that other tasks can await it
+                foreach (Vector3Int chunkToLoad in chunksToLoad) chunkLoadingTasks.Add(chunkToLoad, loadingTask);
+
+                // Wait for chunks to load, and add them to the list
+                List<Chunk> loadedChunks = await loadingTask;
+
+                // Add those chunks to the final list and remove their task
+                foreach (Chunk loadedChunk in loadedChunks)
+                {
+                    // Add the newly loaded chunks to the final list
+                    chunkList.Add(loadedChunk);
+                    chunkLoadingTasks.Remove(loadedChunk.position);
+                }
             }
+
+            return chunkList;
+        }
+
+        /// <summary>
+        ///     <para>DO NOT USE</para>
+        ///     <para>
+        ///         Like GetOrCreateChunk but without checking if a chunk is already loading (this would load the chunk a second
+        ///         time).
+        ///         This is used internally by GetOrCreateChunk.
+        ///     </para>
+        /// </summary>
+        private async Task<List<Chunk>> _GetOrCreateChunks(List<Vector3Int> chunkPositions)
+        {
+            List<Chunk> chunkList = new List<Chunk>();
+
+            List<Vector3Int> positionsToLoad = new List<Vector3Int>();
+
+            foreach (Vector3Int chunkPosition in chunkPositions)
+                // If it already exists, return it
+                if (chunks.ContainsKey(chunkPosition))
+                    chunkList.Add(chunks[chunkPosition]);
+                /*
+                // If the chunk is already loading
+                else if (chunkLoadingTasks.ContainsKey(chunkPosition))
+                    // Wait for the chunk to load
+                    foreach (Chunk loadedChunk in await chunkLoadingTasks[chunkPosition])
+                        // Only add the chunk that is requested
+                        if (loadedChunk.position == chunkPosition)
+                            chunkList.Add(loadedChunk);
+                            */
+                // Otherwise, add it to the list to load
+                else
+                    positionsToLoad.Add(chunkPosition);
+
+            // If there are no extra chunks to load, return early.
+            if (positionsToLoad.Count == 0) return chunkList;
+
+            // Prepare to load the chunks
+            await LoadChunks(positionsToLoad);
+
+            // Issue is what if process awaits this loadingTask but turns out that chunk doesn't exist so it needs to create a new one.
+            // At this point, the operation will stop awaiting but the Chunk still doesn't exist.
+
+            List<Vector3Int> positionsToCreate = new List<Vector3Int>();
+
+            // Verify that every chunk was loaded correctly
+            foreach (Vector3Int positionToLoad in positionsToLoad)
+                // If the chunk was successfully loaded, add it
+                if (chunks.ContainsKey(positionToLoad))
+                    chunkList.Add(chunks[positionToLoad]);
+                else
+                    positionsToCreate.Add(positionToLoad);
+
+            // If there are no extra chunks to create, return early.
+            if (positionsToCreate.Count == 0) return chunkList;
+
+            // Create the chunks that couldn't be loaded
+            CreateChunks(positionsToCreate);
+
+            foreach (Vector3Int positionToCreate in positionsToCreate)
+            {
+                if (!chunks.ContainsKey(positionToCreate))
+                    Debug.LogError($"Unable to load or create Chunk at {positionToCreate}");
+
+                chunkList.Add(chunks[positionToCreate]);
+            }
+
+            return chunkList;
+        }
+
+        /// <summary>
+        /// Get all chunks that are dirty.
+        /// </summary>
+        public List<Chunk> GetDirtyChunks()
+        {
+            // TODO: Remove LINQ? Or maybe make all of the World use Linq (which would be much easier).
+            // Find all the chunks that have IsDirty == true
+            return chunks.Values.ToList().FindAll(x => x.IsDirty);
+        }
+
+        #endregion
+
+        #region Chunk Loading Requests
+
+        /// <summary>
+        /// Request the loading of multiple chunks.
+        /// This will keep the chunks loaded until they are requested to be unloaded.
+        /// </summary>
+        /// <param name="chunkPositions">The positions at which to load the chunks from.</param>
+        /// <param name="requester">The ChunkLoader that requested this.</param>
+        public async Task RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        {
+            foreach (Vector3Int chunkPosition in chunkPositions)
+                // Add it the requester to the list
+                if (chunkLoadingRequests.ContainsKey(chunkPosition))
+                    chunkLoadingRequests[chunkPosition].Add(requester);
+                else
+                    chunkLoadingRequests.Add(chunkPosition, new List<ChunkLoader> {requester});
+
+            // TODO: Should this load the chunk directly? Or wait for its turn in as a new LoadChunkOperation (Also same thing for Unloading)
+            // Actually load the chunk into the chunks list
+            await GetOrCreateChunk(chunkPositions);
+        }
+
+        /// <summary>
+        /// Request the unloading of multiple chunks.
+        /// This will not fail if the chunks weren't loaded in the first place.
+        /// </summary>
+        /// <param name="chunkPositions">The positions at which to unload the chunks from.</param>
+        /// <param name="requester">The ChunkLoader that requested this.</param>
+        public async Task RequestChunkUnloading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        {
+            List<Chunk> chunksToUnload = new List<Chunk>();
+
+            foreach (Vector3Int chunkPosition in chunkPositions)
+            {
+                if (chunkLoadingRequests.ContainsKey(chunkPosition))
+                    chunkLoadingRequests.Remove(chunkPosition);
+
+                // Check that no other operations need that chunk (aka ALL of them do NOT have that position)
+                if (chunkOperations.All(chunkOperation => chunkOperation.ChunkPosition != chunkPosition))
+                    // Check that the chunk isn't requested to remain loaded (by a chunk loader)
+                    if (!chunkLoadingRequests.ContainsKey(chunkPosition))
+                        // Also make sure that the chunk actually exists, maybe the operation is wrong...
+                        if (chunks.ContainsKey(chunkPosition))
+                            chunksToUnload.Add(chunks[chunkPosition]);
+            }
+
+            await UnloadChunks(chunksToUnload, worldInfo);
         }
 
         #endregion
@@ -99,168 +301,89 @@ namespace Pandawan.Islands.Tilemaps
         #region Chunk Loading
 
         /// <summary>
-        ///     Request the loading of the chunk at the given position.
+        /// Used internally to load the Chunks at the given chunk positions.
+        /// This will not check for pre-loaded chunks or currently loading ones.
         /// </summary>
-        /// <param name="chunkPosition">The chunk position at which to load.</param>
-        /// <param name="requester">The ChunkLoader that requested to load this chunk.</param>
-        public async Task RequestChunkLoading(Vector3Int chunkPosition, ChunkLoader requester)
+        /// <param name="chunkPositions">The positions at which to load the chunks from.</param>
+        private async Task LoadChunks(List<Vector3Int> chunkPositions)
         {
-            await RequestChunkLoading(new List<Vector3Int> {chunkPosition}, requester);
-        }
+            // Ignore if empty list
+            if (chunkPositions == null || chunkPositions.Count == 0) return;
 
-        /// <summary>
-        ///     Request the loading of the chunk within the given bounds.
-        /// </summary>
-        /// <param name="chunkPositions">The chunk positions at which to load.</param>
-        /// <param name="requester">The ChunkLoader that requested to load this chunk.</param>
-        public async Task RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
-        {
-            // TODO: Optimize this so it loads multiple chunks at once (using the same FileStream in WorldManager)
-            // TODO: Maybe make this a coroutine so that it can wait until the end of the frame and load multiple chunks at once?
-            // Load every chunkPosition
-            foreach (Vector3Int chunkPosition in chunkPositions)
+            // If that chunk exists in the file system, load it
+            if (WorldManager.ChunksExist(chunkPositions, worldInfo))
             {
-                Debug.Log("Loading chunk " + chunkPosition);
+                /*
+                // Prepare loading task
+                Task<List<Chunk>> loadingTask = WorldManager.LoadChunk(chunkPositions, worldInfo);
 
-                // Simply calling GetOrCreateChunk works
-                await GetOrCreateChunk(chunkPosition, requester);
+                // Add the loading task to the Dictionary so other operations can wait for it
+                foreach (Vector3Int chunkPosition in chunkPositions)
+                {
+                    chunkLoadingTasks.Add(chunkPosition, loadingTask);
+                }
+                */
+
+                // Load chunks from file system
+                List<Chunk> newChunks = await WorldManager.LoadChunk(chunkPositions, worldInfo);
+
+                // Loop through each to set them up
+                foreach (Chunk newChunk in newChunks)
+                {
+                    // Ignore null chunks
+                    if (newChunk == null) continue;
+
+                    // Add the chunk and set it up
+                    chunks.Add(newChunk.position, newChunk);
+                    newChunk.Setup(chunkSize, tilemap);
+
+                    // Remove the loading task for the chunk at that position (because it's done loading)
+                    // chunkLoadingTasks.Remove(newChunk.position);
+                }
             }
         }
 
-        /// <summary>
-        ///     Request the unloading of the chunk at the given position.
-        /// </summary>
-        /// <param name="chunkPosition">The chunk position at which to unload.</param>
-        /// <param name="requester">The ChunkLoader asking </param>
-        public async Task RequestChunkUnLoading(Vector3Int chunkPosition, ChunkLoader requester)
-        {
-            await RequestChunkUnLoading(new List<Vector3Int> {chunkPosition}, requester);
-        }
 
         /// <summary>
-        ///     Request the unloading of the chunk at the given position.
+        /// Used internally to unload the Chunks at the given chunk positions.
+        /// This will save dirt chunks to the file system.
         /// </summary>
-        /// <param name="chunkPositions">The chunk positions at which to unload.</param>
-        /// <param name="requester">The ChunkLoader that requested to unload this chunk.</param>
-        public async Task RequestChunkUnLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        /// <param name="chunksToUnload">The positions at which to load the chunks from.</param>
+        /// <param name="info">The WorldInfo object to find where to save the dirty chunks.</param>
+        private async Task UnloadChunks(List<Chunk> chunksToUnload, WorldInfo info)
         {
             List<Chunk> chunksToSave = new List<Chunk>();
 
-            foreach (Vector3Int chunkPosition in chunkPositions)
+            foreach (Chunk chunk in chunksToUnload)
             {
-                if (!chunkLoadRequests[chunkPosition].Exists(loader => loader == requester))
-                {
-                    Debug.LogError($"Given {requester} never requested for chunk loading at {chunkPosition}.");
-                    continue;
-                }
+                // Remove it from the list
+                chunks.Remove(chunk.position);
 
-                chunkLoadRequests[chunkPosition].Remove(requester);
-
-                // If that Chunk is no longer needed
-                if (chunkLoadRequests[chunkPosition].Count == 0)
-                {
-                    Debug.Log("Unloading chunk " + chunkPosition);
-                    // Add the chunk to be saved if they have been modified
-                    if (chunks[chunkPosition].IsDirty)
-                        chunksToSave.Add(chunks[chunkPosition]);
-                    else
-                        chunks[chunkPosition].Clear(false);
-
-                    // Remove that chunkPosition from all records/dictionaries
-                    chunks.Remove(chunkPosition);
-                    chunkLoadRequests.Remove(chunkPosition);
-                }
+                // If the chunk is dirty, add it to the list of chunks to save
+                if (chunk.IsDirty)
+                    chunksToSave.Add(chunk);
             }
 
-            // Save all of the chunks in the chunksToSave List
-            if (chunksToSave.Count > 0)
-            {
-                await WorldManager.SaveChunks(chunksToSave, worldInfo);
-                // Clear them once saved
-                foreach (Chunk chunk in chunksToSave) chunk.Clear(false);
-            }
+            // Save all the chunks at once
+            await WorldManager.SaveChunks(chunksToSave, info);
+
+            // Clear all chunks once done saving those that are important 
+            foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);
         }
 
         /// <summary>
-        ///     Find all the Dirty Chunks
+        /// Create fresh new chunks at the given positions.
         /// </summary>
-        /// <returns>A List of all Dirty Chunks</returns>
-        public List<Chunk> GetDirtyChunks()
+        /// <param name="chunkPositions">The positions at which to create the chunk from.</param>
+        private void CreateChunks(List<Vector3Int> chunkPositions)
         {
-            // Find all the chunks that have IsDirty == true
-            return chunks.Values.ToList().FindAll(x => x.IsDirty);
+            foreach (Vector3Int chunkPosition in chunkPositions)
+                chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
         }
 
         #endregion
 
-        #region Chunk Abstraction
-
-        // TODO: Refactor so I don't have to pass in a loader (aka find another way to make the whole "loader" system)
-        // TODO: Refactor so it's all in multiple methods...
-        /// <summary>
-        ///     Get, Load, or Create a chunk at the given position.
-        /// </summary>
-        /// <param name="chunkPosition">The chunk position.</param>
-        /// <param name="loader">The loader that asked to get this chunk.</param>
-        private async Task<Chunk> GetOrCreateChunk(Vector3Int chunkPosition, ChunkLoader loader = null)
-        {
-            // If that chunk is currently loading, wait until it's done
-            if (chunkLoadingTasks.ContainsKey(chunkPosition) && chunkLoadingTasks != null)
-                await chunkLoadingTasks[chunkPosition];
-
-            // If it doesn't exist, create a new one
-            if (!chunks.ContainsKey(chunkPosition))
-            {
-                // TODO: Make it so WorldManager accepts both List and normal
-                // WorldManager works in Lists, create a list with that element
-                List<Vector3Int> chunkPositions = new List<Vector3Int> {chunkPosition};
-
-                // TODO: Refactor this so I don't repeat that line twice.
-                if (WorldManager.ChunksExist(chunkPositions, worldInfo))
-                {
-                    // TODO: Stop WorldManager using List<Chunk> for everything
-                    // If the chunk is not currently loading, loading it
-                    // Add the loading task to the list
-                    chunkLoadingTasks.Add(chunkPosition, WorldManager.LoadChunk(chunkPositions, worldInfo));
-
-                    // Load the chunk from FS if possible
-                    // WorldManager uses List<Chunk> for everything so keep it all in that
-                    List<Chunk> chunkList = await chunkLoadingTasks[chunkPosition];
-
-                    // Once done loading (after await), remove it from the loading task list
-                    chunkLoadingTasks.Remove(chunkPosition);
-
-                    // If it was able to load a chunk
-                    if (chunkList != null && chunkList.Count > 0)
-                    {
-                        // Add & Load new chunk into tilemap
-                        chunks.Add(chunkPosition, chunkList[0]);
-
-                        chunkList[0].Setup(chunkSize, tilemap);
-                    }
-                    // If it couldn't load any chunk
-                    else
-                    {
-                        chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
-                        // TODO: Add Chunk generation.
-                    }
-                }
-                else
-                {
-                    chunks.Add(chunkPosition, new Chunk(chunkPosition, chunkSize, tilemap));
-                    // TODO: Add Chunk generation.
-                }
-            }
-
-            // Add the loader to the chunkLoadRequests
-            if (chunkLoadRequests.ContainsKey(chunkPosition))
-                chunkLoadRequests[chunkPosition].Add(loader);
-            else
-                chunkLoadRequests.Add(chunkPosition, new List<ChunkLoader> {loader});
-
-
-            return chunks[chunkPosition];
-        }
+        #region ChunkData Accessor
 
         /// <summary>
         ///     Get the ChunkData object for the given chunk position.
@@ -437,15 +560,6 @@ namespace Pandawan.Islands.Tilemaps
             return chunkSize;
         }
 
-        /// <summary>
-        /// NOTE YOU ALMOST NEVER WANT TO DO THIS!
-        /// </summary>
-        /// <returns></returns>
-        public Tilemap GetTilemap()
-        {
-            return tilemap;
-        }
-
         public override string ToString()
         {
             return $"World {worldInfo.name}";
@@ -455,8 +569,7 @@ namespace Pandawan.Islands.Tilemaps
     }
 
     [Serializable]
-    public struct WorldInfo
-    {
+    public struct WorldInfo {
         public static WorldInfo Default { get; } = new WorldInfo("world");
 
         [SerializeField] public string name;

@@ -16,7 +16,7 @@ namespace Pandawan.Islands.Tilemaps
             ChunkPosition = chunkPosition;
         }
 
-        public abstract Task Execute(ChunkController chunkController);
+        public abstract Task Execute(World world);
     }
 
     public class GetTileOperation : IChunkOperation
@@ -31,9 +31,9 @@ namespace Pandawan.Islands.Tilemaps
             TilePosition = tilePosition;
         }
 
-        public override async Task Execute(ChunkController chunkController)
+        public override async Task Execute(World world)
         {
-            Result = await chunkController.GetTileAt(TilePosition);
+            Result = await world.GetTileAt(TilePosition);
         }
     }
 
@@ -61,12 +61,12 @@ namespace Pandawan.Islands.Tilemaps
             Tile = null;
         }
 
-        public override async Task Execute(ChunkController chunkController)
+        public override async Task Execute(World world)
         {
             if (Tile != null)
-                await chunkController.SetTileAt(TilePosition, Tile);
+                await world.SetTileAt(TilePosition, Tile);
             else
-                await chunkController.SetTileAt(TilePosition, TileId);
+                await world.SetTileAt(TilePosition, TileId);
         }
     }
 }
