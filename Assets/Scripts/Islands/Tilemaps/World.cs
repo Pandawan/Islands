@@ -9,6 +9,12 @@ using UnityEngine.Tilemaps;
 
 namespace Pandawan.Islands.Tilemaps
 {
+    /// <summary>
+    /// TODO: Find out why some chunks aren't being unloaded... Are there duplicate RequestChunkLoading requests?
+    /// TODO: Find out why a chunks unloaded by ChunkLoader are considered Dirty (they are saved). (Or is that just because of the TileImporter's async delay which doesn't save the map immediately).
+    /// </summary>
+
+
     // This is a rewrite of the Chunk Loading systems for World.cs into a neater class
     public class World : MonoBehaviour
     {
@@ -97,9 +103,10 @@ namespace Pandawan.Islands.Tilemaps
                         if (chunks.ContainsKey(operation.ChunkPosition))
                             chunksToUnload.Add(chunks[operation.ChunkPosition]);
             }
-
+            
+            if (chunksToUnload.Count > 0)
             // Unload all the chunks that are no longer needed
-            await UnloadChunks(chunksToUnload, worldInfo);
+                await UnloadChunks(chunksToUnload, worldInfo);
         }
 
         #endregion
@@ -293,7 +300,9 @@ namespace Pandawan.Islands.Tilemaps
                             chunksToUnload.Add(chunks[chunkPosition]);
             }
 
-            await UnloadChunks(chunksToUnload, worldInfo);
+            if (chunksToUnload.Count > 0)
+                // Unload all the chunks that are no longer needed
+                await UnloadChunks(chunksToUnload, worldInfo);
         }
 
         #endregion
@@ -364,11 +373,15 @@ namespace Pandawan.Islands.Tilemaps
                     chunksToSave.Add(chunk);
             }
 
-            // Save all the chunks at once
-            await WorldManager.SaveChunks(chunksToSave, info);
+            // Save chunks if any
+            if (chunksToSave.Count > 0)
+            {
+                // Save all the chunks at once
+                await WorldManager.SaveChunks(chunksToSave, info);
 
-            // Clear all chunks once done saving those that are important 
-            foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);
+                // Clear all chunks once done saving those that are important 
+                foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);
+            }
         }
 
         /// <summary>
