@@ -270,7 +270,7 @@ namespace Pandawan.Islands.Tilemaps
         {
             // If it doesn't exist
             if (!chunks.ContainsKey(chunkPosition)) Debug.LogError($"No Chunk found at position {chunkPosition}.");
-
+            // TODO: Make this use GetOrCreateChunk?
             return chunks[chunkPosition].GetChunkData();
         }
 
@@ -435,6 +435,15 @@ namespace Pandawan.Islands.Tilemaps
         public Vector3Int GetChunkSize()
         {
             return chunkSize;
+        }
+
+        /// <summary>
+        /// NOTE YOU ALMOST NEVER WANT TO DO THIS!
+        /// </summary>
+        /// <returns></returns>
+        public Tilemap GetTilemap()
+        {
+            return tilemap;
         }
 
         public override string ToString()
