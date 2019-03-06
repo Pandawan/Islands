@@ -39,19 +39,21 @@ namespace Pandawan.Islands.Tilemaps
             // Get new chunks (chunks that are in new list but not in old one) 
             List<Vector3Int> chunksToLoad = new List<Vector3Int>(newChunksList
                 .Where(pos => !previousLoadedChunks.Contains(pos)));
-            
-            // Fire and forget chunk unloading
-            await World.instance.RequestChunkLoading(chunksToLoad, this);
-            
+
             // Get new chunks (chunks that are in old list but not in new one) 
             List<Vector3Int> chunksToUnload = new List<Vector3Int>(previousLoadedChunks.ToList()
                 .Where(pos => !newChunksList.Contains(pos)));
-            
-            // Fire and forget chunk unloading
-            await World.instance.RequestChunkUnloading(chunksToUnload, this);
-            
+
             // Update previous list
             previousLoadedChunks = newChunksList;
+
+            if (chunksToLoad.Count > 0)
+                // Fire and forget chunk loading
+                await World.instance.RequestChunkLoading(chunksToLoad, this);
+            
+            if (chunksToUnload.Count > 0)
+                // Fire and forget chunk unloading
+                await World.instance.RequestChunkUnloading(chunksToUnload, this);
         }
 
         private void OnDrawGizmosSelected()

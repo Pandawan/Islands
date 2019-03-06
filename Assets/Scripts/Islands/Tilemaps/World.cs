@@ -10,10 +10,9 @@ using UnityEngine.Tilemaps;
 namespace Pandawan.Islands.Tilemaps
 {
     /// <summary>
-    /// TODO: Find out why some chunks aren't being unloaded... Are there duplicate RequestChunkLoading requests?
-    /// TODO: Find out why a chunks unloaded by ChunkLoader are considered Dirty (they are saved). (Or is that just because of the TileImporter's async delay which doesn't save the map immediately).
+    ///     TODO: Find out why quickly loading/unloading chunks (using ChunkLoader) sometimes doesn't load one of the chunks (creates an empty spot).
+    ///     TODO: Verify that using multiple ChunkLoaders OR multiple Get/Set requests (or both) doesn't cause issues with chunk loading.
     /// </summary>
-
 
     // This is a rewrite of the Chunk Loading systems for World.cs into a neater class
     public class World : MonoBehaviour
@@ -22,11 +21,11 @@ namespace Pandawan.Islands.Tilemaps
 
         public static World instance;
 
+        [SerializeField] private WorldInfo worldInfo = WorldInfo.Default;
+
         [SerializeField] private Vector3Int chunkSize = Vector3Int.one;
 
         [SerializeField] private Tilemap tilemap;
-
-        [SerializeField] private WorldInfo worldInfo = WorldInfo.Default;
 
         // List of every chunk loader that requested for this chunk to be loaded
         private readonly Dictionary<Vector3Int, List<ChunkLoader>> chunkLoadingRequests =
@@ -72,6 +71,14 @@ namespace Pandawan.Islands.Tilemaps
             await ProcessOperations();
         }
 
+        private void OnDrawGizmosSelected()
+        {
+            Gizmos.color = Color.yellow;
+            if (chunks.Count > 0)
+                foreach (Vector3Int chunkPositions in chunks.Keys)
+                    Gizmos.DrawWireCube(chunkPositions * chunkSize + (Vector3) chunkSize / 2, chunkSize);
+        }
+
         /// <summary>
         ///     <para>
         ///         Process all the ChunkOperations currently in the queue.
@@ -103,9 +110,9 @@ namespace Pandawan.Islands.Tilemaps
                         if (chunks.ContainsKey(operation.ChunkPosition))
                             chunksToUnload.Add(chunks[operation.ChunkPosition]);
             }
-            
+
             if (chunksToUnload.Count > 0)
-            // Unload all the chunks that are no longer needed
+                // Unload all the chunks that are no longer needed
                 await UnloadChunks(chunksToUnload, worldInfo);
         }
 
@@ -243,7 +250,7 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Get all chunks that are dirty.
+        ///     Get all chunks that are dirty.
         /// </summary>
         public List<Chunk> GetDirtyChunks()
         {
@@ -257,13 +264,16 @@ namespace Pandawan.Islands.Tilemaps
         #region Chunk Loading Requests
 
         /// <summary>
-        /// Request the loading of multiple chunks.
-        /// This will keep the chunks loaded until they are requested to be unloaded.
+        ///     Request the loading of multiple chunks.
+        ///     This will keep the chunks loaded until they are requested to be unloaded.
         /// </summary>
         /// <param name="chunkPositions">The positions at which to load the chunks from.</param>
         /// <param name="requester">The ChunkLoader that requested this.</param>
         public async Task RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
+            // If no positions passed, ignore
+            if (chunkPositions == null || chunkPositions.Count == 0) return;
+            
             foreach (Vector3Int chunkPosition in chunkPositions)
                 // Add it the requester to the list
                 if (chunkLoadingRequests.ContainsKey(chunkPosition))
@@ -277,13 +287,16 @@ namespace Pandawan.Islands.Tilemaps
         }
 
         /// <summary>
-        /// Request the unloading of multiple chunks.
-        /// This will not fail if the chunks weren't loaded in the first place.
+        ///     Request the unloading of multiple chunks.
+        ///     This will not fail if the chunks weren't loaded in the first place.
         /// </summary>
         /// <param name="chunkPositions">The positions at which to unload the chunks from.</param>
         /// <param name="requester">The ChunkLoader that requested this.</param>
         public async Task RequestChunkUnloading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
+            // If no positions passed, ignore
+            if (chunkPositions == null || chunkPositions.Count == 0) return;
+            
             List<Chunk> chunksToUnload = new List<Chunk>();
 
             foreach (Vector3Int chunkPosition in chunkPositions)
@@ -310,8 +323,8 @@ namespace Pandawan.Islands.Tilemaps
         #region Chunk Loading
 
         /// <summary>
-        /// Used internally to load the Chunks at the given chunk positions.
-        /// This will not check for pre-loaded chunks or currently loading ones.
+        ///     Used internally to load the Chunks at the given chunk positions.
+        ///     This will not check for pre-loaded chunks or currently loading ones.
         /// </summary>
         /// <param name="chunkPositions">The positions at which to load the chunks from.</param>
         private async Task LoadChunks(List<Vector3Int> chunkPositions)
@@ -322,17 +335,6 @@ namespace Pandawan.Islands.Tilemaps
             // If that chunk exists in the file system, load it
             if (WorldManager.ChunksExist(chunkPositions, worldInfo))
             {
-                /*
-                // Prepare loading task
-                Task<List<Chunk>> loadingTask = WorldManager.LoadChunk(chunkPositions, worldInfo);
-
-                // Add the loading task to the Dictionary so other operations can wait for it
-                foreach (Vector3Int chunkPosition in chunkPositions)
-                {
-                    chunkLoadingTasks.Add(chunkPosition, loadingTask);
-                }
-                */
-
                 // Load chunks from file system
                 List<Chunk> newChunks = await WorldManager.LoadChunk(chunkPositions, worldInfo);
 
@@ -345,17 +347,14 @@ namespace Pandawan.Islands.Tilemaps
                     // Add the chunk and set it up
                     chunks.Add(newChunk.position, newChunk);
                     newChunk.Setup(chunkSize, tilemap);
-
-                    // Remove the loading task for the chunk at that position (because it's done loading)
-                    // chunkLoadingTasks.Remove(newChunk.position);
                 }
             }
         }
 
 
         /// <summary>
-        /// Used internally to unload the Chunks at the given chunk positions.
-        /// This will save dirt chunks to the file system.
+        ///     Used internally to unload the Chunks at the given chunk positions.
+        ///     This will save dirt chunks to the file system.
         /// </summary>
         /// <param name="chunksToUnload">The positions at which to load the chunks from.</param>
         /// <param name="info">The WorldInfo object to find where to save the dirty chunks.</param>
@@ -374,18 +373,14 @@ namespace Pandawan.Islands.Tilemaps
             }
 
             // Save chunks if any
-            if (chunksToSave.Count > 0)
-            {
-                // Save all the chunks at once
-                await WorldManager.SaveChunks(chunksToSave, info);
+            if (chunksToSave.Count > 0) await WorldManager.SaveChunks(chunksToSave, info);
 
-                // Clear all chunks once done saving those that are important 
-                foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);
-            }
+            // Clear all chunks (once done saving those that are important)
+            foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);
         }
 
         /// <summary>
-        /// Create fresh new chunks at the given positions.
+        ///     Create fresh new chunks at the given positions.
         /// </summary>
         /// <param name="chunkPositions">The positions at which to create the chunk from.</param>
         private void CreateChunks(List<Vector3Int> chunkPositions)
@@ -582,7 +577,8 @@ namespace Pandawan.Islands.Tilemaps
     }
 
     [Serializable]
-    public struct WorldInfo {
+    public struct WorldInfo
+    {
         public static WorldInfo Default { get; } = new WorldInfo("world");
 
         [SerializeField] public string name;

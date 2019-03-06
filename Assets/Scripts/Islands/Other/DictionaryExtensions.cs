@@ -51,7 +51,7 @@ namespace Pandawan.Islands.Other
                 sb.Append(sequenceSeparator);
             }
 
-            return sb.ToString(0, sb.Length - 1);
+            return sb.ToString(0, sb.Length - sequenceSeparator.Length);
         }
     }
 }

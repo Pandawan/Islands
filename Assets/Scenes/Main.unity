@@ -260,10 +260,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83c503fbb80e4ae2a2024494e4aa0440, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chunkSize: {x: 32, y: 32, z: 32}
-  tilemap: {fileID: 622777449256560938}
   worldInfo:
     name: world
+  chunkSize: {x: 32, y: 32, z: 32}
+  tilemap: {fileID: 622777449256560938}
 --- !u!114 &948457038
 MonoBehaviour:
   m_ObjectHideFlags: 0
