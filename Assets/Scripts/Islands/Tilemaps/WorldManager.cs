@@ -25,10 +25,15 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="world">The World to import to</param>
         public static async Task ImportTilemap(Tilemap tilemap, World world)
         {
+            List<Task> taskBundle = new List<Task>();
+
             foreach (Vector3Int pos in tilemap.cellBounds.allPositionsWithin)
                 if (tilemap.HasTile(pos))
                     // TODO: Find way to also import ChunkData (would need a custom solution because Tilemaps don't store taht).
-                    await world.SetTileAt(pos, tilemap.GetTile<TileBase>(pos).name);
+                    taskBundle.Add(world.SetTileAt(pos, tilemap.GetTile<TileBase>(pos).name));
+
+            // Wait for all tasks at once.
+            await Task.WhenAll(taskBundle);
         }
 
         #region World 
@@ -123,6 +128,7 @@ namespace Pandawan.Islands.Tilemaps
 
         public static async Task SaveChunksAt(List<Chunk> chunks, string savePath)
         {
+            Debug.Log("Trying to save " + chunks.ToStringFlattened());
             await Task.Run(() =>
             {
                 string chunksPath = Path.Combine(savePath, "chunks");
@@ -160,7 +166,7 @@ namespace Pandawan.Islands.Tilemaps
                     }
                 }
 
-                Debug.Log($"Successfully saved chunk at \"{savePath}\".");
+                Debug.Log($"Successfully saved chunk(s) {chunks.ToStringFlattened()} at \"{savePath}\".");
             });
         }
 
