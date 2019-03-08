@@ -126,13 +126,8 @@ namespace Pandawan.Islands.Tilemaps
 
                 // TODO: What if a chunk is set to be unloaded here, but before the chunkOperations.Any() ends, there are other operations that were added?
                 // If there aren't any other operations that need that chunk, add it to the list of chunks to unload
-                // Check that no other operations need that chunk (aka ALL of them do NOT have that position)
-                if (chunkOperations.All(chunkOperation => chunkOperation.ChunkPosition != operation.ChunkPosition))
-                    // Check that the chunk isn't requested to remain loaded (by a chunk loader)
-                    if (!chunkLoadingRequests.ContainsKey(operation.ChunkPosition))
-                        // Also make sure that the chunk actually exists, maybe the operation is wrong...
-                        if (chunks.ContainsKey(operation.ChunkPosition))
-                            chunksToUnload.Add(chunks[operation.ChunkPosition]);
+                if (ShouldUnloadChunkAtPosition(operation.ChunkPosition))
+                    chunksToUnload.Add(chunks[operation.ChunkPosition]);
             }
 
             if (chunksToUnload.Count > 0)
@@ -140,6 +135,24 @@ namespace Pandawan.Islands.Tilemaps
                 await UnloadChunks(chunksToUnload, worldInfo);
 
             isProcessingOperations = false;
+        }
+
+        /// <summary>
+        /// Get whether or not the Chunk in the given operation needs to be unloaded.
+        /// This will check if the chunk is needed for future operations OR if it is needed by a chunk loader.
+        /// </summary>
+        /// <param name="chunkPosition">The position for which to check the chunk.</param>
+        private bool ShouldUnloadChunkAtPosition(Vector3Int chunkPosition)
+        {
+            // Check that no other operations need that chunk (aka ALL of them do NOT have that position)
+            if (chunkOperations.All(chunkOperation => chunkOperation.ChunkPosition != chunkPosition))
+                // Check that the chunk isn't requested to remain loaded (by a chunk loader)
+                if (!chunkLoadingRequests.ContainsKey(chunkPosition))
+                    // Also make sure that the chunk actually exists, maybe the operation is wrong...
+                    if (chunks.ContainsKey(chunkPosition))
+                        return true;
+
+            return false;
         }
 
         /// <summary>
@@ -327,16 +340,17 @@ namespace Pandawan.Islands.Tilemaps
 
             foreach (Vector3Int chunkPosition in chunkPositions)
             {
-                if (chunkLoadingRequests.ContainsKey(chunkPosition))
+                // Check that this request exists and that the chunk loader has actually requested it
+                if (chunkLoadingRequests.ContainsKey(chunkPosition) &&
+                    chunkLoadingRequests[chunkPosition].Contains(requester))
+                {
+                    // Remove the request
                     chunkLoadingRequests.Remove(chunkPosition);
 
-                // Check that no other operations need that chunk (aka ALL of them do NOT have that position)
-                if (chunkOperations.All(chunkOperation => chunkOperation.ChunkPosition != chunkPosition))
-                    // Check that the chunk isn't requested to remain loaded (by a chunk loader)
-                    if (!chunkLoadingRequests.ContainsKey(chunkPosition))
-                        // Also make sure that the chunk actually exists, maybe the operation is wrong...
-                        if (chunks.ContainsKey(chunkPosition))
-                            chunksToUnload.Add(chunks[chunkPosition]);
+                    // Unload the chunk if it's not used by anything else
+                    if (ShouldUnloadChunkAtPosition(chunkPosition))
+                        chunksToUnload.Add(chunks[chunkPosition]);
+                }
             }
 
             if (chunksToUnload.Count > 0)
