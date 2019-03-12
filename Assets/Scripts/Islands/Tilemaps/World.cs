@@ -10,9 +10,10 @@ using UnityEngine.Tilemaps;
 namespace Pandawan.Islands.Tilemaps
 {
     /// <summary>
-    ///     
-    ///     TODO: Find out why quickly loading/unloading chunks (using ChunkLoader) sometimes doesn't load one of the chunks
-    ///     (creates an empty spot).
+    ///
+    ///     TODO: Find out why rapid chunk loading/unloading (usually in diagonal) sometimes keeps one chunk loaded at the corners.
+    ///     (This might be because of request order and could be solved with chunk operations, maybe).
+    /// 
     ///     TODO: Verify that using multiple ChunkLoaders OR multiple Get/Set requests (or both) doesn't cause issues with
     ///     chunk loading. (This might require making Load/Unload a ChunkOperation).
     ///
@@ -374,11 +375,13 @@ namespace Pandawan.Islands.Tilemaps
 
             Debug.Log("Loading chunk at " + chunkPositions.ToStringFlattened());
 
-            // If that chunk exists in the file system, load it
-            if (WorldManager.ChunksExist(chunkPositions, worldInfo))
+            // Keep every chunk that actually exists in the file system
+            List<Vector3Int> chunksToLoad = WorldManager.GetExistingChunks(chunkPositions, worldInfo);
+            
+            if (chunksToLoad.Count > 0)
             {
                 // Load chunks from file system
-                List<Chunk> newChunks = await WorldManager.LoadChunk(chunkPositions, worldInfo);
+                List<Chunk> newChunks = await WorldManager.LoadChunk(chunksToLoad, worldInfo);
 
                 // Loop through each to set them up
                 foreach (Chunk newChunk in newChunks)
@@ -406,6 +409,8 @@ namespace Pandawan.Islands.Tilemaps
         {
             List<Chunk> chunksToSave = new List<Chunk>();
 
+            Debug.Log("Unloading chunk at " + chunksToUnload.ToStringFlattened());
+
             foreach (Chunk chunk in chunksToUnload)
             {
                 // Remove it from the list
@@ -421,6 +426,8 @@ namespace Pandawan.Islands.Tilemaps
 
             // Clear all chunks (once done saving those that are important)
             foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);
+
+            Debug.Log("Done unloading chunks at " + chunksToUnload.ToStringFlattened());
         }
 
         /// <summary>

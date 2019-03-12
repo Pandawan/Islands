@@ -177,30 +177,31 @@ namespace Pandawan.Islands.Tilemaps
         // TODO: Make <summary>s for every method here
 
         /// <summary>
-        ///     Whether or not the chunks with given position exist.
+        /// Get all the chunks that have a corresponding save file.
         /// </summary>
-        /// <param name="chunkPos">The position to check.</param>
+        /// <param name="chunkPos">The chunks to check.</param>
         /// <param name="worldInfo">The world to check in.</param>
-        /// <returns>Returns true if ALL chunks exist.</returns>
-        public static bool ChunksExist(List<Vector3Int> chunkPos, WorldInfo worldInfo)
+        /// <returns>Returns ALL chunks that exist; if a chunk does not exist, it is not included.</returns>
+        public static List<Vector3Int> GetExistingChunks(List<Vector3Int> chunkPos, WorldInfo worldInfo)
         {
             // TODO: Check if this needs to run on a separate thread/Task
             string savePath = GetWorldSavePath(worldInfo.GetId());
-
             string chunksPath = Path.Combine(savePath, "chunks");
 
-            // Get save path for each Chunk position
-            string[] chunkPaths = chunkPos.Select(pos => Path.Combine(chunksPath,
-                    $"{Chunk.GetIdForPosition(pos)}.dat"))
-                .ToArray();
+            List<Vector3Int> resultPos = new List<Vector3Int>();
 
-            foreach (string chunkPath in chunkPaths)
-                if (!File.Exists(chunkPath))
-                    return false;
+            foreach (Vector3Int pos in chunkPos)
+            {
+                string chunkPath = Path.Combine(chunksPath,
+                    $"{Chunk.GetIdForPosition(pos)}.dat");
 
-            return true;
+                if (File.Exists(chunkPath))
+                    resultPos.Add(pos);
+            }
+
+            return resultPos;
         }
-
+        
         public static async Task<List<Chunk>> LoadChunk(List<Vector3Int> chunkPos, WorldInfo worldInfo)
         {
             string savePath = GetWorldSavePath(worldInfo.GetId());
@@ -243,7 +244,7 @@ namespace Pandawan.Islands.Tilemaps
                         {
                             Debug.LogError($"Error while loading chunks at \"{chunkPath}\". {e}");
                         }
-
+                    
                     return chunks;
                 }
 
