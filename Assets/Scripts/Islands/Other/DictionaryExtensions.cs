@@ -41,6 +41,7 @@ namespace Pandawan.Islands.Other
         public static string ToStringFlattened<TKey, TValue>(this Dictionary<TKey, TValue> source,
             string keyValueSeparator = "=", string sequenceSeparator = "|")
         {
+            // TODO: Check performance vs using Linq -> Select(key/value -> key+"="+value+"|").Join()
             StringBuilder sb = new StringBuilder();
 
             foreach (KeyValuePair<TKey, TValue> x in source)
@@ -50,6 +51,8 @@ namespace Pandawan.Islands.Other
                 sb.Append(x.Value);
                 sb.Append(sequenceSeparator);
             }
+
+            if (sb.Length == 0) return "";
 
             return sb.ToString(0, sb.Length - sequenceSeparator.Length);
         }

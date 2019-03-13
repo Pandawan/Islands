@@ -50,7 +50,7 @@ namespace Pandawan.Islands.Tilemaps
             if (chunksToLoad.Count > 0)
                 // Fire and forget chunk loading
                 await World.instance.RequestChunkLoading(chunksToLoad, this);
-            
+
             if (chunksToUnload.Count > 0)
                 // Fire and forget chunk unloading
                 await World.instance.RequestChunkUnloading(chunksToUnload, this);

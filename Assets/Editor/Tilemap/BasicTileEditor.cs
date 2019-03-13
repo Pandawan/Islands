@@ -38,7 +38,7 @@ namespace Pandawan.Islands.Editor
 
             Target.ColliderType =
                 (Tile.ColliderType) EditorGUILayout.EnumPopup("Collider Type", Target.ColliderType);
-            
+
             // If value changed, set dirty to be saved later
             EditorUtility.SetDirty(Target);
         }

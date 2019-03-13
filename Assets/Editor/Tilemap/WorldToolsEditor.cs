@@ -7,11 +7,10 @@ namespace Pandawan.Islands.Editor
 {
     public class WorldToolsEditor : EditorWindow
     {
+        private bool importedTilemap;
+        private bool processing;
         private Tilemap tilemap;
         private World world;
-
-        private bool importedTilemap = false;
-        private bool processing = false;
 
         [MenuItem("Window/World Tools")]
         public static void ShowWindow()
@@ -19,7 +18,7 @@ namespace Pandawan.Islands.Editor
             WorldToolsEditor editor = GetWindow<WorldToolsEditor>("World Tools");
             editor.importedTilemap = false;
         }
-        
+
         public async void OnGUI()
         {
             // TODO: Add way to Import World from script quickly using this Editor
@@ -48,7 +47,7 @@ namespace Pandawan.Islands.Editor
             EditorGUI.BeginDisabledGroup(!importedTilemap || !EditorApplication.isPlaying || processing);
             bool saveWorld = GUILayout.Button("Save World");
             EditorGUI.EndDisabledGroup();
-            
+
             // Import tilemap to world
             if (tilemapToWorld)
             {

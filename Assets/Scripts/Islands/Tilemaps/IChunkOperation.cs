@@ -24,39 +24,36 @@ namespace Pandawan.Islands.Tilemaps
     public abstract class IChunkOperation
     {
         /// <summary>
-        /// A string to identify this operation's type (if not using C# GetType).
+        ///     A string to identify this operation's type (if not using C# GetType).
         /// </summary>
         public string Type { get; }
 
-        // public List<Vector3Int> ChunkPosition { get; }
-        public Vector3Int ChunkPosition { get; }
+        public List<Vector3Int> ChunkPositions { get; }
+        // public Vector3Int ChunkPosition { get; }
 
         /// <summary>
-        /// Used by the ChunkOperations Queue so the original caller can await the Execute task.
+        ///     Used by the ChunkOperations Queue so the original caller can await the Execute task.
         /// </summary>
         public TaskCompletionSource<bool> ExecuteCompletionSource { get; }
-        
-        protected IChunkOperation(string type, Vector3Int chunkPosition)
+
+        protected IChunkOperation(string type, Vector3Int chunkPosition) : this(type,
+            new List<Vector3Int> {chunkPosition})
+        {
+        }
+
+
+        protected IChunkOperation(string type, List<Vector3Int> chunkPositions)
         {
             Type = type;
-            // ChunkPosition = new List<Vector3Int>() {chunkPosition};
-            ChunkPosition = chunkPosition;
-
+            ChunkPositions = chunkPositions;
             ExecuteCompletionSource = new TaskCompletionSource<bool>();
         }
-        
-        /*
-        protected IChunkOperation(string type, List<Vector3Int> chunkPosition)
-        {
-            Type = type;
-            ChunkPosition = chunkPosition;
-        }
-        */
-        
+
+
         // NOTE: Execute should always call "ExecuteCompletionSource.SetResult()" at the end.
         /// <summary>
-        /// Execute the Operation.
-        /// (Called by the World.ProcessOperations method).
+        ///     Execute the Operation.
+        ///     (Called by the World.ProcessOperations method).
         /// </summary>
         public abstract Task Execute(World world);
     }
@@ -111,14 +108,15 @@ namespace Pandawan.Islands.Tilemaps
                 await world._SetTileAt(TilePosition, Tile);
             else
                 await world._SetTileAt(TilePosition, TileId);
-            
+
             ExecuteCompletionSource.SetResult(true);
         }
     }
-    
-    public class RemoveTileOperation : IChunkOperation {
+
+    public class RemoveTileOperation : IChunkOperation
+    {
         public Vector3Int TilePosition { get; }
-        
+
         public RemoveTileOperation(Vector3Int tilePosition, World world) : base("remove",
             world.TileToChunkPosition(tilePosition))
         {
@@ -132,9 +130,10 @@ namespace Pandawan.Islands.Tilemaps
         }
     }
 
-    public class IsEmptyTileOperation : IChunkOperation {
+    public class IsEmptyTileOperation : IChunkOperation
+    {
         public Vector3Int TilePosition { get; }
-        
+
         public bool Result { get; private set; }
 
         public IsEmptyTileOperation(Vector3Int tilePosition, World world) : base("is_empty",
@@ -150,37 +149,41 @@ namespace Pandawan.Islands.Tilemaps
         }
     }
 
-    /*
-    public class LoadChunkOperation : IChunkOperation {
 
+    public class LoadChunkOperation : IChunkOperation
+    {
         public ChunkLoader Requester { get; }
 
-        public LoadChunkOperation(List<Vector3Int> chunkPosition, ChunkLoader requester) : base("load",
-            chunkPosition)
+        public LoadChunkOperation(List<Vector3Int> chunkPositions, ChunkLoader requester) : base("load",
+            chunkPositions)
         {
             Requester = requester;
         }
 
         public override async Task Execute(World world)
         {
-            await world.RequestChunkLoading(ChunkPosition, Requester);
+            await world._RequestChunkLoading(ChunkPositions, Requester);
+            ExecuteCompletionSource.SetResult(true);
         }
     }
-    
-    public class UnloadChunkOperation : IChunkOperation {
 
+    public class UnloadChunkOperation : IChunkOperation
+    {
         public ChunkLoader Requester { get; }
 
-        public UnloadChunkOperation(List<Vector3Int> chunkPosition, ChunkLoader requester) : base("unload",
-            chunkPosition)
+        public UnloadChunkOperation(List<Vector3Int> chunkPositions, ChunkLoader requester) : base("unload",
+            chunkPositions)
         {
             Requester = requester;
         }
 
-        public override async Task Execute(World world)
+        public override Task Execute(World world)
         {
-            await world.RequestChunkUnloading(ChunkPosition, Requester);
+            world._RequestChunkUnloading(ChunkPositions, Requester);
+            ExecuteCompletionSource.SetResult(true);
+
+            // Best way to return Task when you don't need async/await
+            return Task.CompletedTask;
         }
     }
-    */
 }

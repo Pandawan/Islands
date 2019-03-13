@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 
 namespace Pandawan.Islands.Other
@@ -21,6 +20,8 @@ namespace Pandawan.Islands.Other
                 sb.Append(x);
                 sb.Append(sequenceSeparator);
             }
+
+            if (sb.Length == 0) return "";
 
             return sb.ToString(0, sb.Length - sequenceSeparator.Length);
         }

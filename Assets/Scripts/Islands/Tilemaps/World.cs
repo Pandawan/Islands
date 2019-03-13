@@ -10,21 +10,19 @@ using UnityEngine.Tilemaps;
 namespace Pandawan.Islands.Tilemaps
 {
     /// <summary>
-    ///
-    ///     TODO: Find out why rapid chunk loading/unloading (usually in diagonal) sometimes keeps one chunk loaded at the corners.
+    ///     TODO: Find out why rapid chunk loading/unloading (usually in diagonal) sometimes keeps one chunk loaded at the
+    ///     corners.
     ///     (This might be because of request order and could be solved with chunk operations, maybe).
-    /// 
     ///     TODO: Verify that using multiple ChunkLoaders OR multiple Get/Set requests (or both) doesn't cause issues with
     ///     chunk loading. (This might require making Load/Unload a ChunkOperation).
-    ///
-    /// 
-    ///     TODO TO RESEARCH: I'm unsure but it looks like the WorldManager.Save/Load are not using a separate thread, this might be causing small lags.
-    /// 
-    ///
+    ///     TODO TO RESEARCH: I'm unsure but it looks like the WorldManager.Save/Load are not using a separate thread, this
+    ///     might be causing small lags.
+    ///     TODO TO RESEARCH: Maybe add GZip compression to files (or replace string IDs to byte IDs) to save storage?
     ///     TODO HACK FIXED:
-    ///     - On line 77, there was an issue with ProcessOperations() being called multiple times (because Update) which lead to issues with loading/saving at the same time.
-    ///     Resulting in file sharing errors. I was able to fix it by adding a simple if statement (that checks if ProcessOperations() is already running), but it would be nice to fix it correctly.
-    ///     
+    ///     - On line 77, there was an issue with ProcessOperations() being called multiple times (because Update) which lead
+    ///     to issues with loading/saving at the same time.
+    ///     Resulting in file sharing errors. I was able to fix it by adding a simple if statement (that checks if
+    ///     ProcessOperations() is already running), but it would be nice to fix it correctly.
     /// </summary>
 
     // This is a rewrite of the Chunk Loading systems for World.cs into a neater class
@@ -114,7 +112,8 @@ namespace Pandawan.Islands.Tilemaps
         {
             isProcessingOperations = true;
 
-            List<Chunk> chunksToUnload = new List<Chunk>();
+            // List<Chunk> chunksToUnload = new List<Chunk>();
+            List<Vector3Int> chunksUsed = new List<Vector3Int>();
 
             // If there are any elements in the queue of operations
             while (chunkOperations.Any())
@@ -125,35 +124,63 @@ namespace Pandawan.Islands.Tilemaps
                 // Execute the task, and wait for it to return
                 await operation.Execute(this);
 
-                // TODO: What if a chunk is set to be unloaded here, but before the chunkOperations.Any() ends, there are other operations that were added?
-                // If there aren't any other operations that need that chunk, add it to the list of chunks to unload
-                if (ShouldUnloadChunkAtPosition(operation.ChunkPosition))
-                    chunksToUnload.Add(chunks[operation.ChunkPosition]);
+                // Keep track of all the chunks that were used by the operations
+                chunksUsed = chunksUsed.Union(operation.ChunkPositions).ToList();
             }
 
-            if (chunksToUnload.Count > 0)
-                // Unload all the chunks that are no longer needed
-                await UnloadChunks(chunksToUnload, worldInfo);
+            if (chunksUsed.Count > 0)
+                // Unload all chunks that were used and are no longer needed
+                await UnloadChunks(GetChunksToUnloadFromPositions(chunksUsed), worldInfo);
 
             isProcessingOperations = false;
         }
 
         /// <summary>
-        /// Get whether or not the Chunk in the given operation needs to be unloaded.
-        /// This will check if the chunk is needed for future operations OR if it is needed by a chunk loader.
+        ///     Get a List of all Chunks that are no longer needed from the given Chunk Positions list.
+        ///     This will check if the chunk is needed for future operations OR if it is needed by a chunk loader.
         /// </summary>
-        /// <param name="chunkPosition">The position for which to check the chunk.</param>
-        private bool ShouldUnloadChunkAtPosition(Vector3Int chunkPosition)
+        /// <param name="chunkPositions">The chunk positions to check for.</param>
+        /// <returns></returns>
+        private List<Chunk> GetChunksToUnloadFromPositions(List<Vector3Int> chunkPositions)
         {
-            // Check that no other operations need that chunk (aka ALL of them do NOT have that position)
-            if (chunkOperations.All(chunkOperation => chunkOperation.ChunkPosition != chunkPosition))
-                // Check that the chunk isn't requested to remain loaded (by a chunk loader)
-                if (!chunkLoadingRequests.ContainsKey(chunkPosition))
-                    // Also make sure that the chunk actually exists, maybe the operation is wrong...
-                    if (chunks.ContainsKey(chunkPosition))
-                        return true;
+            /*
+            List<Chunk> chunksToUnload = new List<Chunk>();
 
-            return false;
+            
+            foreach (Vector3Int chunkPosition in chunkPositions)
+            {
+                // 1. Check that this chunk is not required by any operation in the queue
+                if (!chunkOperations.Any(chunkOperation => chunkOperation.ChunkPositions.Contains(chunkPosition)))
+                {
+                    // 2. Check that no loading is requesting it
+                    if (!chunkLoadingRequests.ContainsKey(chunkPosition))
+                    {
+                        // 3. Check that the chunk is actually loaded
+                        if (chunks.ContainsKey(chunkPosition))
+                        {
+                            chunksToUnload.Add(chunks[chunkPosition]);
+                        }
+                    }
+                }
+            }
+
+            return chunksToUnload;
+
+            */
+
+
+            return
+                chunkPositions
+                    // Get all chunk positions (in the currentOperation) that are not found in any of the chunkOperations in the queue.
+                    .Where(position =>
+                        !chunkOperations.Any(chunkOperation => chunkOperation.ChunkPositions.Contains(position)))
+                    // Get all positions that are not currently being requested by chunk loaders
+                    .Where(position => !chunkLoadingRequests.ContainsKey(position))
+                    // Make sure the positions have a corresponding chunk currently loaded
+                    .Where(position => chunks.ContainsKey(position))
+                    // Convert from positions to chunks
+                    .Select(position => chunks[position])
+                    .ToList();
         }
 
         /// <summary>
@@ -311,17 +338,29 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="requester">The ChunkLoader that requested this.</param>
         public async Task RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
+            Debug.Log("Requesting for chunks " + chunkPositions.ToStringFlattened() + " to load.");
+            await AddChunkOperation(new LoadChunkOperation(chunkPositions, requester));
+        }
+
+        // Internal version of RequestChunkUnloading without ChunkOperations. This is called by UnloadChunkOperation
+        public async Task _RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        {
             // If no positions passed, ignore
             if (chunkPositions == null || chunkPositions.Count == 0) return;
 
             foreach (Vector3Int chunkPosition in chunkPositions)
                 // Add it the requester to the list
                 if (chunkLoadingRequests.ContainsKey(chunkPosition))
-                    chunkLoadingRequests[chunkPosition].Add(requester);
+                {
+                    // Make sure that this requester did not already ask for this chunk to be loaded
+                    if (!chunkLoadingRequests[chunkPosition].Contains(requester))
+                        chunkLoadingRequests[chunkPosition].Add(requester);
+                }
                 else
+                {
                     chunkLoadingRequests.Add(chunkPosition, new List<ChunkLoader> {requester});
+                }
 
-            // TODO: Should this load the chunk directly? Or wait for its turn in as a new LoadChunkOperation (Also same thing for Unloading)
             // Actually load the chunk into the chunks list
             await GetOrCreateChunk(chunkPositions);
         }
@@ -334,29 +373,36 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="requester">The ChunkLoader that requested this.</param>
         public async Task RequestChunkUnloading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
+            Debug.Log("Requesting for chunks " + chunkPositions.ToStringFlattened() + " to unload.");
+            await AddChunkOperation(new UnloadChunkOperation(chunkPositions, requester));
+        }
+
+        // Internal version of RequestChunkUnloading without ChunkOperations. This is called by UnloadChunkOperation
+        public void _RequestChunkUnloading(List<Vector3Int> chunkPositions, ChunkLoader requester)
+        {
             // If no positions passed, ignore
             if (chunkPositions == null || chunkPositions.Count == 0) return;
 
             List<Chunk> chunksToUnload = new List<Chunk>();
 
             foreach (Vector3Int chunkPosition in chunkPositions)
-            {
-                // Check that this request exists and that the chunk loader has actually requested it
+                // Check that this request exists and that the chunk loader has actually requested it previously
                 if (chunkLoadingRequests.ContainsKey(chunkPosition) &&
                     chunkLoadingRequests[chunkPosition].Contains(requester))
                 {
-                    // Remove the request
-                    chunkLoadingRequests.Remove(chunkPosition);
+                    // Remove the chunk from the requests list
+                    chunkLoadingRequests[chunkPosition].Remove(requester);
 
-                    // Unload the chunk if it's not used by anything else
-                    if (ShouldUnloadChunkAtPosition(chunkPosition))
-                        chunksToUnload.Add(chunks[chunkPosition]);
+                    // If this chunk is no longer requested by any chunk loader, remove it entirely.
+                    if (chunkLoadingRequests[chunkPosition].Count == 0)
+                        chunkLoadingRequests.Remove(chunkPosition);
                 }
-            }
 
-            if (chunksToUnload.Count > 0)
-                // Unload all the chunks that are no longer needed
-                await UnloadChunks(chunksToUnload, worldInfo);
+            /**
+             * Note: This does not unload the chunk immediately because there is no need.
+             * The ProcessOperation method will see that this chunk is being used and keep track of it in its "ToUnload" list.
+             * Once no other chunk loader/operation requires it, it will unload the chunk.
+             */
         }
 
         #endregion
@@ -377,7 +423,7 @@ namespace Pandawan.Islands.Tilemaps
 
             // Keep every chunk that actually exists in the file system
             List<Vector3Int> chunksToLoad = WorldManager.GetExistingChunks(chunkPositions, worldInfo);
-            
+
             if (chunksToLoad.Count > 0)
             {
                 // Load chunks from file system
@@ -408,6 +454,8 @@ namespace Pandawan.Islands.Tilemaps
         private async Task UnloadChunks(List<Chunk> chunksToUnload, WorldInfo info)
         {
             List<Chunk> chunksToSave = new List<Chunk>();
+
+            if (chunksToUnload == null || chunksToUnload.Count == 0) return;
 
             Debug.Log("Unloading chunk at " + chunksToUnload.ToStringFlattened());
 
