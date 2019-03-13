@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Pandawan.Islands.Other;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -335,13 +336,9 @@ namespace Pandawan.Islands.Tilemaps
         public void Clear(bool setDirty)
         {
             BoundsInt bounds = new BoundsInt(position * size, size);
-            for (int x = bounds.xMin; x < bounds.xMax; x++)
-            for (int y = bounds.yMin; y < bounds.yMax; y++)
-            for (int z = bounds.zMin; z < bounds.zMax; z++)
-            {
-                Vector3Int tilePosition = new Vector3Int(x, y, z);
-                Tilemap.SetTile(tilePosition, null);
-            }
+            
+            // Set an array of nulls on the entire bounds of the chunk
+            Tilemap.SetTilesBlock(bounds, bounds.ToList().Select<Vector3Int, TileBase>(i => null).ToArray());
 
             // Reset tile and chunkData
             tiles = null;
