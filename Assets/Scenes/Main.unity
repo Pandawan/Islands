@@ -264,6 +264,7 @@ MonoBehaviour:
     name: world
   chunkSize: {x: 32, y: 32, z: 5}
   tilemap: {fileID: 622777449256560938}
+  debugMode: 0
 --- !u!114 &948457038
 MonoBehaviour:
   m_ObjectHideFlags: 0

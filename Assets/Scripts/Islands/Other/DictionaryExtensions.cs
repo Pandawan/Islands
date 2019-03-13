@@ -5,6 +5,7 @@ using System.Text;
 
 namespace Pandawan.Islands.Other
 {
+    // TODO: Merge EnumerableExtensions with DictionaryExtensions
     public static class DictionaryExtensions
     {
         /// <summary>
@@ -41,7 +42,6 @@ namespace Pandawan.Islands.Other
         public static string ToStringFlattened<TKey, TValue>(this Dictionary<TKey, TValue> source,
             string keyValueSeparator = "=", string sequenceSeparator = "|")
         {
-            // TODO: Check performance vs using Linq -> Select(key/value -> key+"="+value+"|").Join()
             StringBuilder sb = new StringBuilder();
 
             foreach (KeyValuePair<TKey, TValue> x in source)

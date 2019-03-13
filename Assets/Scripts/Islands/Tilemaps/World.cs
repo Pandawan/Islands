@@ -1,23 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Pandawan.Islands.Other;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Debug = UnityEngine.Debug;
 
 namespace Pandawan.Islands.Tilemaps
 {
     /// <summary>
-    ///     TODO: Find out why rapid chunk loading/unloading (usually in diagonal) sometimes keeps one chunk loaded at the
-    ///     corners.
-    ///     (This might be because of request order and could be solved with chunk operations, maybe).
-    ///     TODO: Verify that using multiple ChunkLoaders OR multiple Get/Set requests (or both) doesn't cause issues with
-    ///     chunk loading. (This might require making Load/Unload a ChunkOperation).
-    ///     TODO TO RESEARCH: I'm unsure but it looks like the WorldManager.Save/Load are not using a separate thread, this
-    ///     might be causing small lags.
+    ///     TODO: Refactor (especially with the whole _Internal methods)
+    ///     TODO: Write new README.md on how the ChunkOperations system works
+    /// 
     ///     TODO TO RESEARCH: Maybe add GZip compression to files (or replace string IDs to byte IDs) to save storage?
+    /// 
     ///     TODO HACK FIXED:
     ///     - On line 77, there was an issue with ProcessOperations() being called multiple times (because Update) which lead
     ///     to issues with loading/saving at the same time.
@@ -38,6 +37,8 @@ namespace Pandawan.Islands.Tilemaps
 
         [SerializeField] private Tilemap tilemap;
 
+        [SerializeField] private bool debugMode = false;
+        
         // List of every chunk loader that requested for this chunk to be loaded
         private readonly Dictionary<Vector3Int, List<ChunkLoader>> chunkLoadingRequests =
             new Dictionary<Vector3Int, List<ChunkLoader>>();
@@ -112,7 +113,6 @@ namespace Pandawan.Islands.Tilemaps
         {
             isProcessingOperations = true;
 
-            // List<Chunk> chunksToUnload = new List<Chunk>();
             List<Vector3Int> chunksUsed = new List<Vector3Int>();
 
             // If there are any elements in the queue of operations
@@ -143,9 +143,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <returns></returns>
         private List<Chunk> GetChunksToUnloadFromPositions(List<Vector3Int> chunkPositions)
         {
-            /*
             List<Chunk> chunksToUnload = new List<Chunk>();
-
             
             foreach (Vector3Int chunkPosition in chunkPositions)
             {
@@ -165,22 +163,6 @@ namespace Pandawan.Islands.Tilemaps
             }
 
             return chunksToUnload;
-
-            */
-
-
-            return
-                chunkPositions
-                    // Get all chunk positions (in the currentOperation) that are not found in any of the chunkOperations in the queue.
-                    .Where(position =>
-                        !chunkOperations.Any(chunkOperation => chunkOperation.ChunkPositions.Contains(position)))
-                    // Get all positions that are not currently being requested by chunk loaders
-                    .Where(position => !chunkLoadingRequests.ContainsKey(position))
-                    // Make sure the positions have a corresponding chunk currently loaded
-                    .Where(position => chunks.ContainsKey(position))
-                    // Convert from positions to chunks
-                    .Select(position => chunks[position])
-                    .ToList();
         }
 
         /// <summary>
@@ -338,7 +320,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="requester">The ChunkLoader that requested this.</param>
         public async Task RequestChunkLoading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
-            Debug.Log("Requesting for chunks " + chunkPositions.ToStringFlattened() + " to load.");
+            if (debugMode) Debug.Log("Requesting for chunks " + chunkPositions.ToStringFlattened() + " to load.");
             await AddChunkOperation(new LoadChunkOperation(chunkPositions, requester));
         }
 
@@ -373,7 +355,7 @@ namespace Pandawan.Islands.Tilemaps
         /// <param name="requester">The ChunkLoader that requested this.</param>
         public async Task RequestChunkUnloading(List<Vector3Int> chunkPositions, ChunkLoader requester)
         {
-            Debug.Log("Requesting for chunks " + chunkPositions.ToStringFlattened() + " to unload.");
+            if (debugMode) Debug.Log("Requesting for chunks " + chunkPositions.ToStringFlattened() + " to unload.");
             await AddChunkOperation(new UnloadChunkOperation(chunkPositions, requester));
         }
 
@@ -419,7 +401,7 @@ namespace Pandawan.Islands.Tilemaps
             // Ignore if empty list
             if (chunkPositions == null || chunkPositions.Count == 0) return;
 
-            Debug.Log("Loading chunk at " + chunkPositions.ToStringFlattened());
+            if (debugMode) Debug.Log("Loading chunk at " + chunkPositions.ToStringFlattened());
 
             // Keep every chunk that actually exists in the file system
             List<Vector3Int> chunksToLoad = WorldManager.GetExistingChunks(chunkPositions, worldInfo);
@@ -441,7 +423,7 @@ namespace Pandawan.Islands.Tilemaps
                 }
             }
 
-            Debug.Log("Finished loading chunk at " + chunkPositions.ToStringFlattened());
+            if (debugMode) Debug.Log("Finished loading chunk at " + chunkPositions.ToStringFlattened());
         }
 
 
@@ -457,7 +439,7 @@ namespace Pandawan.Islands.Tilemaps
 
             if (chunksToUnload == null || chunksToUnload.Count == 0) return;
 
-            Debug.Log("Unloading chunk at " + chunksToUnload.ToStringFlattened());
+            if (debugMode) Debug.Log("Unloading chunk at " + chunksToUnload.ToStringFlattened());
 
             foreach (Chunk chunk in chunksToUnload)
             {
@@ -475,7 +457,7 @@ namespace Pandawan.Islands.Tilemaps
             // Clear all chunks (once done saving those that are important)
             foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);
 
-            Debug.Log("Done unloading chunks at " + chunksToUnload.ToStringFlattened());
+            if (debugMode) Debug.Log("Done unloading chunks at " + chunksToUnload.ToStringFlattened());
         }
 
         /// <summary>

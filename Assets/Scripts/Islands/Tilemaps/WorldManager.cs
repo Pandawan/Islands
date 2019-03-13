@@ -14,10 +14,7 @@ namespace Pandawan.Islands.Tilemaps
 {
     public static class WorldManager
     {
-        // TODO: Might want to use "async void" instead of "async Task" because Task doesn't crash on Exception... See https://stackoverflow.com/questions/12144077/async-await-when-to-return-a-task-vs-void
-
         // TODO: Optimize this? Check if possible to import multiple tiles at once? Or maybe make it so that the Chunk doesn't "SET" the tilemap again.
-        // TODO: Perhaps find way to make it so it doesn't set the chunk as Dirty?
         /// <summary>
         ///     Imports all of the tiles in the tilemap into the World
         /// </summary>
@@ -128,7 +125,6 @@ namespace Pandawan.Islands.Tilemaps
 
         public static async Task SaveChunksAt(List<Chunk> chunks, string savePath)
         {
-            Debug.Log("Trying to save " + chunks.ToStringFlattened());
             await Task.Run(() =>
             {
                 string chunksPath = Path.Combine(savePath, "chunks");
