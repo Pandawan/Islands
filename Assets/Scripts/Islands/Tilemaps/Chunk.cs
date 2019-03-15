@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Pandawan.Islands.Other;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -97,7 +96,7 @@ namespace Pandawan.Islands.Tilemaps
             Dictionary<Vector3Int, TileBase> tilesToAdd = new Dictionary<Vector3Int, TileBase>();
 
             // Load every tile
-            for (int index = 0; index < tiles.GetLength(0); index++)
+            for (int index = 0; index < tiles.Length; index++)
             {
                 Vector3Int tilePosition =
                     LocalChunkToTilePosition(IndexToPosition(index));
@@ -330,9 +329,11 @@ namespace Pandawan.Islands.Tilemaps
         public void Clear(bool setDirty)
         {
             BoundsInt bounds = new BoundsInt(position * size, size);
+            // Create a null array with the size of the bounds
+            TileBase[] tilesToSet = new TileBase[bounds.size.x * bounds.size.y * bounds.size.z];
 
             // Set an array of nulls on the entire bounds of the chunk
-            Tilemap.SetTilesBlock(bounds, bounds.ToList().Select<Vector3Int, TileBase>(i => null).ToArray());
+            Tilemap.SetTilesBlock(bounds, tilesToSet);
 
             // Reset tile and chunkData
             tiles = null;
