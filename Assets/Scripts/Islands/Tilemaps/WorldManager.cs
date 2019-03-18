@@ -71,13 +71,13 @@ namespace Pandawan.Islands.Tilemaps
 
         #region WorldInfo Load
 
-        public static async Task<WorldInfo> LoadWorldInfo(string id)
+        public static async Task<WorldInfo> LoadWorldInfo(string id, bool debugMode = false)
         {
             string savePath = GetWorldSavePath(id);
-            return await LoadWorldInfoAt(savePath);
+            return await LoadWorldInfoAt(savePath, debugMode);
         }
 
-        public static async Task<WorldInfo> LoadWorldInfoAt(string savePath)
+        public static async Task<WorldInfo> LoadWorldInfoAt(string savePath, bool debugMode = false)
         {
             return await Task.Run(() =>
             {
@@ -100,7 +100,7 @@ namespace Pandawan.Islands.Tilemaps
                         new FileStream(worldInfoPath, FileMode.Open, FileAccess.Read))
                     {
                         info = (WorldInfo) formatter.Deserialize(stream);
-                        Debug.Log($"Found valid world at \"{savePath}\".");
+                        if (debugMode) Debug.Log($"Found valid world at \"{savePath}\".");
                     }
                 }
                 catch (IOException e)
@@ -116,14 +116,14 @@ namespace Pandawan.Islands.Tilemaps
 
         #region Chunk Save
 
-        public static async Task SaveChunks(List<Chunk> chunks, WorldInfo worldInfo)
+        public static async Task SaveChunks(List<Chunk> chunks, WorldInfo worldInfo, bool debugMode = false)
         {
             string savePath = GetWorldSavePath(worldInfo.GetId());
 
-            await SaveChunksAt(chunks, savePath);
+            await SaveChunksAt(chunks, savePath, debugMode);
         }
 
-        public static async Task SaveChunksAt(List<Chunk> chunks, string savePath)
+        public static async Task SaveChunksAt(List<Chunk> chunks, string savePath, bool debugMode = false)
         {
             await Task.Run(() =>
             {
@@ -162,7 +162,7 @@ namespace Pandawan.Islands.Tilemaps
                     }
                 }
 
-                Debug.Log($"Successfully saved chunk(s) {chunks.ToStringFlattened()} at \"{savePath}\".");
+                if (debugMode) Debug.Log($"Successfully saved chunk(s) {chunks.ToStringFlattened()} at \"{savePath}\".");
             });
         }
 

@@ -67,7 +67,7 @@ namespace Pandawan.Islands.Tilemaps
         private async void Start()
         {
             // TODO: Call WorldManager.LoadWorld & Find place to call WorldManager.SaveWorld
-            
+
             // Call any event handler subscribed to World.GenerationEvent
             if (GenerationEvent != null)
                 await GenerationEvent.Invoke(this);
@@ -429,7 +429,7 @@ namespace Pandawan.Islands.Tilemaps
             }
 
             // Save chunks if any
-            if (chunksToSave.Count > 0) await WorldManager.SaveChunks(chunksToSave, info);
+            if (chunksToSave.Count > 0) await WorldManager.SaveChunks(chunksToSave, info, debugMode);
 
             // Clear all chunks (once done saving those that are important)
             foreach (Chunk chunk in chunksToUnload) chunk.Clear(false);

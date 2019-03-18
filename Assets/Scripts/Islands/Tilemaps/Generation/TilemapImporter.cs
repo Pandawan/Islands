@@ -9,6 +9,8 @@ namespace Pandawan.Islands.Tilemaps.Generation
     {
         [SerializeField] private Tilemap tilemap;
 
+        [SerializeField] private bool debugMode;
+
         private World worldComponent;
 
         private void Awake()
@@ -33,7 +35,7 @@ namespace Pandawan.Islands.Tilemaps.Generation
         public async Task Import(World world)
         {
             await WorldManager.ImportTilemap(tilemap, world);
-            Debug.Log("Successfully imported Tilemap to World.");
+            if (debugMode) Debug.Log("Successfully imported Tilemap to World.");
         }
     }
 }
