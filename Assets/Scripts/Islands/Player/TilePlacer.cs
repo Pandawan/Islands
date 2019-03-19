@@ -7,14 +7,14 @@ namespace Pandawan.Islands.Player
     // Temporary class to test TileMap Engine
     public class TilePlacer : MonoBehaviour
     {
-        private void Update()
+        private async void Update()
         {
             Vector3Int position =
                 Vector3Int.FloorToInt(UnityEngine.Camera.main.ScreenToWorldPoint(Input.mousePosition));
             position.z = 1;
             if (Input.GetMouseButton(0))
-                World.instance.SetTileAt(position, "tree");
-            else if (Input.GetMouseButton(1)) World.instance.RemoveTileAt(position);
+                await World.instance.SetTileAt(position, "tree");
+            else if (Input.GetMouseButton(1)) await World.instance.RemoveTileAt(position);
         }
     }
 }

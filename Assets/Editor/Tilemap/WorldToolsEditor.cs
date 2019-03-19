@@ -7,10 +7,10 @@ namespace Pandawan.Islands.Editor
 {
     public class WorldToolsEditor : EditorWindow
     {
+        private bool importedTilemap;
+        private bool processing;
         private Tilemap tilemap;
         private World world;
-
-        private bool importedTilemap = false;
 
         [MenuItem("Window/World Tools")]
         public static void ShowWindow()
@@ -18,8 +18,8 @@ namespace Pandawan.Islands.Editor
             WorldToolsEditor editor = GetWindow<WorldToolsEditor>("World Tools");
             editor.importedTilemap = false;
         }
-        
-        public void OnGUI()
+
+        public async void OnGUI()
         {
             // TODO: Add way to Import World from script quickly using this Editor
 
@@ -39,15 +39,15 @@ namespace Pandawan.Islands.Editor
             EditorGUILayout.Space();
 
             // Only enable Save button if Editor is in PlayMode
-            EditorGUI.BeginDisabledGroup(!EditorApplication.isPlaying);
+            EditorGUI.BeginDisabledGroup(!EditorApplication.isPlaying || processing);
             bool tilemapToWorld = GUILayout.Button("Import Tilemap to World");
             EditorGUI.EndDisabledGroup();
 
             // Only enable Save button if Tilemap has been imported & Editor is in PlayMode
-            EditorGUI.BeginDisabledGroup(!importedTilemap || !EditorApplication.isPlaying);
+            EditorGUI.BeginDisabledGroup(!importedTilemap || !EditorApplication.isPlaying || processing);
             bool saveWorld = GUILayout.Button("Save World");
             EditorGUI.EndDisabledGroup();
-            
+
             // Import tilemap to world
             if (tilemapToWorld)
             {
@@ -69,10 +69,12 @@ namespace Pandawan.Islands.Editor
                     return;
                 }
 
+                processing = true;
                 // Import the Tilemap into the World
-                WorldManager.ImportTilemap(tilemap, world);
+                await WorldManager.ImportTilemap(tilemap, world);
 
                 importedTilemap = true;
+                processing = false;
 
                 Debug.Log("Successfully imported Tilemap to World!");
             }
@@ -98,10 +100,12 @@ namespace Pandawan.Islands.Editor
                     return;
                 }
 
+                processing = true;
                 string path = EditorUtility.SaveFolderPanel("Save Tilemap", "", world.GetWorldInfo().GetId());
-                
+
                 // Try saving the world
-                WorldManager.SaveWorldAt(world, path);
+                await WorldManager.SaveWorldAt(world, path);
+                processing = false;
             }
         }
     }

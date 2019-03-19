@@ -5,6 +5,7 @@ using System.Text;
 
 namespace Pandawan.Islands.Other
 {
+    // TODO: Merge EnumerableExtensions with DictionaryExtensions
     public static class DictionaryExtensions
     {
         /// <summary>
@@ -51,7 +52,9 @@ namespace Pandawan.Islands.Other
                 sb.Append(sequenceSeparator);
             }
 
-            return sb.ToString(0, sb.Length - 1);
+            if (sb.Length == 0) return "";
+
+            return sb.ToString(0, sb.Length - sequenceSeparator.Length);
         }
     }
 }

@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Pandawan.Islands.Tilemaps.Tiles;
 using UnityEngine;
 using UnityEngine.Tilemaps;
-using Debug = UnityEngine.Debug;
 
 namespace Pandawan.Islands.Tilemaps
 {
@@ -42,32 +40,6 @@ namespace Pandawan.Islands.Tilemaps
             IsDirty = false;
         }
 
-        // TODO: Use this to import a tilemap instead of World.SetTile every time?
-        public Chunk(BoundsInt bounds, Tilemap tilemap, ChunkData chunkData)
-        {
-            tiles = new string[size.x * size.y * size.z];
-
-            // Loop through every position in the bounds and add the tile if not empty
-            for (int x = bounds.xMin; x < bounds.xMax; x++)
-            for (int y = bounds.yMin; y < bounds.yMax; y++)
-            for (int z = bounds.zMin; z < bounds.zMax; z++)
-            {
-                // Get the tile at this local position
-                Vector3Int tilePosition = new Vector3Int(x, y, z);
-                string tile = (tilemap.GetTile(tilePosition) as BasicTile)?.TileName ?? "";
-                // Add it to the tiles list
-                tiles[PositionToIndex(tilePosition)] = tile;
-            }
-
-            // Apply the position
-            position = bounds.position;
-            size = bounds.size;
-            Tilemap = tilemap;
-            this.chunkData = chunkData;
-            IsDirty = false;
-        }
-
-
         /// <summary>
         ///     Setup private fields if Chunk was created through serialization.
         /// </summary>
@@ -96,20 +68,17 @@ namespace Pandawan.Islands.Tilemaps
         {
             // Keep a list of tiles/positions to push to the tilemap later
             Dictionary<Vector3Int, TileBase> tilesToAdd = new Dictionary<Vector3Int, TileBase>();
-            
+
             // Load every tile
-            for (int index = 0; index < tiles.GetLength(0); index++)
+            for (int index = 0; index < tiles.Length; index++)
             {
                 Vector3Int tilePosition =
                     LocalChunkToTilePosition(IndexToPosition(index));
-                
+
                 string tileId = tiles[index];
 
                 if (!string.IsNullOrEmpty(tileId))
-                {
                     tilesToAdd.Add(tilePosition, TileDB.GetTile(tileId));
-                }
-                
             }
 
             // Set all of the tiles that aren't empty in the tilemap
@@ -335,13 +304,11 @@ namespace Pandawan.Islands.Tilemaps
         public void Clear(bool setDirty)
         {
             BoundsInt bounds = new BoundsInt(position * size, size);
-            for (int x = bounds.xMin; x < bounds.xMax; x++)
-            for (int y = bounds.yMin; y < bounds.yMax; y++)
-            for (int z = bounds.zMin; z < bounds.zMax; z++)
-            {
-                Vector3Int tilePosition = new Vector3Int(x, y, z);
-                Tilemap.SetTile(tilePosition, null);
-            }
+            // Create a null array with the size of the bounds
+            TileBase[] tilesToSet = new TileBase[bounds.size.x * bounds.size.y * bounds.size.z];
+
+            // Set an array of nulls on the entire bounds of the chunk
+            Tilemap.SetTilesBlock(bounds, tilesToSet);
 
             // Reset tile and chunkData
             tiles = null;

@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.Tilemaps;
 
 namespace Pandawan.Islands.Tilemaps.Generation
@@ -7,6 +8,8 @@ namespace Pandawan.Islands.Tilemaps.Generation
     public class TilemapImporter : MonoBehaviour
     {
         [SerializeField] private Tilemap tilemap;
+
+        [SerializeField] private bool debugMode;
 
         private World worldComponent;
 
@@ -29,10 +32,10 @@ namespace Pandawan.Islands.Tilemaps.Generation
             worldComponent.GenerationEvent += Import;
         }
 
-        public void Import(World world)
+        public async Task Import(World world)
         {
-            WorldManager.ImportTilemap(tilemap, world);
-            Debug.Log("Successfully imported Tilemap to World.");
+            await WorldManager.ImportTilemap(tilemap, world);
+            if (debugMode) Debug.Log("Successfully imported Tilemap to World.");
         }
     }
 }
