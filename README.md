@@ -6,6 +6,8 @@ You can find the actual code in `/Assets/Scripts/Islands/Tilemaps/`, with docume
 
 The rest of the code is simply here to test the engine itself.
 
+Note: An old version of this Tile Engine is also available without async Chunk Loading or ChunkOperations. You can find it in the `old-sync-loading` branch.
+
 ## How it works
 
 Basically, there is one Tilemap, with which a `World` component interacts to load/unload chunks, and modify the tilemap dynamically.
